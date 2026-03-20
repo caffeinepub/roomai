@@ -1,24 +1,79 @@
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import {
   ArrowLeft,
+  Bot,
   CheckCircle,
+  Clapperboard,
+  Clock,
+  CloudSun,
   Download,
+  Droplets,
+  Eraser,
+  Gift,
+  Globe,
+  ImagePlus,
+  Layers,
+  LayoutGrid,
+  Leaf,
   Loader2,
-  RefreshCw,
-  Upload,
+  Menu,
+  Moon,
+  Sofa,
+  Sparkles,
+  Sun,
+  Sunset,
+  TreePine,
+  Video,
   Wand2,
+  Waves,
   X,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import BeforeAfterSlider from "../components/BeforeAfterSlider";
 
 interface DesignToolProps {
   onBack: () => void;
+}
+
+interface Generation {
+  id: string;
+  originalImageUrl: string;
+  generatedImageUrl: string;
+  tool: string;
+  roomType: string;
+  instructions: string;
+  version: number;
+  timestamp: Date;
+}
+
+interface VideoGeneration {
+  id: string;
+  originalImageUrl: string;
+  videoUrl: string;
+  prompt: string;
+  duration: number;
+  resolution: string;
+  timestamp: Date;
 }
 
 const ROOM_TYPES = [
@@ -30,46 +85,336 @@ const ROOM_TYPES = [
   "Dining Room",
 ];
 
-const STYLES = [
-  { name: "No Style", emoji: "🚫", color: "#2A2A3E" },
-  { name: "Modern", emoji: "🏙️", color: "#2D4A6B" },
-  { name: "Minimalist", emoji: "⬜", color: "#4A4A5A" },
-  { name: "Scandinavian", emoji: "🌲", color: "#2D5A3D" },
-  { name: "Industrial", emoji: "🏭", color: "#4A3728" },
-  { name: "Bohemian", emoji: "🌿", color: "#5A4A28" },
-  { name: "Farmhouse", emoji: "🏡", color: "#4A3040" },
-  { name: "Contemporary", emoji: "✨", color: "#2A4A5A" },
-  { name: "Mid-Century", emoji: "🪑", color: "#5A3A28" },
-  { name: "Coastal", emoji: "🌊", color: "#1A4A5A" },
-  { name: "Art Deco", emoji: "🎭", color: "#4A2A5A" },
+type ToolId =
+  | "ADD_FURNITURE"
+  | "FURNITURE_ERASER"
+  | "ROOM_DECLUTTERING"
+  | "ENHANCE_PHOTO_QUALITY"
+  | "MATERIAL_OVERLAY"
+  | "AI_DESIGN_AGENT"
+  | "MULTI_ANGLE_STAGING"
+  | "VIRTUAL_TWILIGHT"
+  | "CHANGING_SEASONS"
+  | "NIGHT_TO_DAY"
+  | "RAIN_TO_SHINE"
+  | "NATURAL_TWILIGHT"
+  | "HOLIDAY_CARD"
+  | "POOL_WATER_ENHANCEMENT"
+  | "LAWN_REPLACEMENT"
+  | "ADD_WATER_POOL"
+  | "AI_VIRTUAL_TOUR"
+  | "AI_360_PANORAMA"
+  | "IMAGE_TO_VIDEO";
+
+interface Tool {
+  id: ToolId;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  beta?: boolean;
+  prompt: (roomType: string) => string;
+}
+
+interface ToolGroup {
+  label: string;
+  tools: Tool[];
+}
+
+const TOOL_GROUPS: ToolGroup[] = [
+  {
+    label: "Interior Design",
+    tools: [
+      {
+        id: "ADD_FURNITURE",
+        label: "Add Furniture",
+        icon: Sofa,
+        prompt: (roomType) =>
+          `Add tasteful, well-placed furniture to this ${roomType} that suits the space. Do not change walls, floors, windows or structural elements.`,
+      },
+      {
+        id: "FURNITURE_ERASER",
+        label: "Furniture Eraser",
+        icon: Eraser,
+        prompt: (roomType) =>
+          `Remove all furniture from this ${roomType}, leaving only the walls, floors, windows, and structural elements. Make it look clean and empty.`,
+      },
+      {
+        id: "ROOM_DECLUTTERING",
+        label: "Room Decluttering",
+        icon: Sparkles,
+        prompt: (roomType) =>
+          `Declutter and organize this ${roomType}. Remove unnecessary items, tidy up surfaces, keep the essential furniture.`,
+      },
+      {
+        id: "ENHANCE_PHOTO_QUALITY",
+        label: "Enhance Photo Quality",
+        icon: Wand2,
+        prompt: (roomType) =>
+          `Enhance the photo quality of this ${roomType} image. Improve lighting, sharpness, color balance and overall visual quality without changing any design elements.`,
+      },
+      {
+        id: "MATERIAL_OVERLAY",
+        label: "Material Overlay",
+        icon: Layers,
+        prompt: (roomType) =>
+          `Apply a premium material overlay to the surfaces in this ${roomType}. Update wall textures, floor materials, and finishes to look high-end.`,
+      },
+      {
+        id: "AI_DESIGN_AGENT",
+        label: "AI Design Agent",
+        icon: Bot,
+        prompt: (roomType) =>
+          `Act as an expert interior design agent. Comprehensively redesign this ${roomType} with the best design choices for the space, optimizing layout, furniture, colors and lighting.`,
+      },
+      {
+        id: "MULTI_ANGLE_STAGING",
+        label: "Multi-Angle Staging",
+        icon: LayoutGrid,
+        prompt: (roomType) =>
+          `Stage this ${roomType} for real estate with professional interior design. Add furniture, decor and lighting that would appeal to potential buyers.`,
+      },
+    ],
+  },
+  {
+    label: "Seasonal & Lighting",
+    tools: [
+      {
+        id: "VIRTUAL_TWILIGHT",
+        label: "Virtual Twilight",
+        icon: Sunset,
+        prompt: () =>
+          "Transform this exterior/room photo to a beautiful virtual twilight scene with warm golden-hour lighting, glowing windows, and a dusk sky.",
+      },
+      {
+        id: "CHANGING_SEASONS",
+        label: "Changing Seasons",
+        icon: Leaf,
+        prompt: () =>
+          "Transform the season visible in this image. Change the outdoor environment and lighting to show a different season while keeping the building/room unchanged.",
+      },
+      {
+        id: "NIGHT_TO_DAY",
+        label: "Night to Day",
+        icon: Sun,
+        prompt: () =>
+          "Transform this night scene to a bright daytime scene with natural daylight, blue sky, and appropriate lighting. Keep the room/building structure identical.",
+      },
+      {
+        id: "RAIN_TO_SHINE",
+        label: "Rain to Shine",
+        icon: CloudSun,
+        prompt: () =>
+          "Transform this rainy scene to bright sunshine weather. Remove rain, add blue sky and warm sunlight. Keep all structural elements identical.",
+      },
+      {
+        id: "NATURAL_TWILIGHT",
+        label: "Natural Twilight",
+        icon: Moon,
+        prompt: () =>
+          "Create a natural twilight atmosphere for this scene with soft purple-pink sky, balanced ambient lighting, and a serene dusk mood.",
+      },
+      {
+        id: "HOLIDAY_CARD",
+        label: "AI Holiday Card",
+        icon: Gift,
+        prompt: () =>
+          "Transform this room/home into a beautiful AI holiday card scene with festive decorations, warm lighting, and seasonal charm.",
+      },
+    ],
+  },
+  {
+    label: "Outdoor Features",
+    tools: [
+      {
+        id: "POOL_WATER_ENHANCEMENT",
+        label: "Pool Water Enhancement",
+        icon: Waves,
+        prompt: () =>
+          "Enhance the pool water in this image to look crystal clear, vibrant blue, and inviting. Keep all surrounding elements the same.",
+      },
+      {
+        id: "LAWN_REPLACEMENT",
+        label: "Lawn Replacement",
+        icon: TreePine,
+        prompt: () =>
+          "Replace the existing lawn in this image with lush, perfectly manicured green grass. Keep all other elements unchanged.",
+      },
+      {
+        id: "ADD_WATER_POOL",
+        label: "Add Water to an Empty Pool",
+        icon: Droplets,
+        prompt: () =>
+          "Add realistic, crystal-clear water to this empty pool. Make it look inviting and properly filled. Keep surrounding area unchanged.",
+      },
+      {
+        id: "AI_VIRTUAL_TOUR",
+        label: "AI Virtual Tour",
+        icon: Video,
+        prompt: (roomType) =>
+          `Create a virtual tour-ready version of this ${roomType} with professional staging, perfect lighting, and polished presentation suitable for a real estate listing.`,
+      },
+      {
+        id: "AI_360_PANORAMA",
+        label: "AI 360° Panorama",
+        icon: Globe,
+        beta: true,
+        prompt: () =>
+          "Enhance this image for a 360° panoramic virtual tour. Improve lighting, color balance, and visual quality for an immersive panoramic presentation.",
+      },
+    ],
+  },
+  {
+    label: "Video Generation",
+    tools: [
+      {
+        id: "IMAGE_TO_VIDEO",
+        label: "Image to Video",
+        icon: Clapperboard,
+        prompt: () =>
+          "Animate this room with smooth, cinematic camera movement.",
+      },
+    ],
+  },
 ];
+
+const ALL_TOOLS = TOOL_GROUPS.flatMap((g) => g.tools);
 
 const STATUS_MESSAGES = [
   "Analyzing your room...",
-  "Applying design style...",
-  "Rendering furniture...",
+  "Applying transformation...",
+  "Rendering details...",
   "Adjusting lighting...",
   "Finalizing details...",
 ];
+
+const VIDEO_STATUS_MESSAGES = [
+  "Analyzing image...",
+  "Generating video frames...",
+  "Rendering motion...",
+  "Encoding video...",
+  "Finalizing...",
+];
+
+const DURATION_OPTIONS = [
+  { label: "4s", value: 4 },
+  { label: "8s", value: 8 },
+  { label: "12s", value: 12 },
+];
+
+const RESOLUTION_OPTIONS = ["1280x720", "720x1280", "1024x1024"];
+
+function SidebarContent({
+  selectedTool,
+  onSelect,
+}: {
+  selectedTool: ToolId;
+  onSelect: (id: ToolId) => void;
+}) {
+  return (
+    <ScrollArea className="h-full">
+      <div className="py-3 pb-8">
+        {TOOL_GROUPS.map((group) => (
+          <div key={group.label} className="mb-2">
+            <p
+              className="px-3 py-2 text-xs font-semibold uppercase tracking-wider"
+              style={{ color: "#9CA3AF" }}
+            >
+              {group.label}
+            </p>
+            {group.tools.map((tool) => {
+              const Icon = tool.icon;
+              const isActive = selectedTool === tool.id;
+              return (
+                <button
+                  key={tool.id}
+                  type="button"
+                  onClick={() => onSelect(tool.id)}
+                  className="w-full flex items-center gap-2.5 py-2 px-3 transition-colors text-left"
+                  style={{
+                    backgroundColor: isActive ? "#E6F7F6" : "transparent",
+                    borderLeft: isActive
+                      ? "2px solid #4ECDC4"
+                      : "2px solid transparent",
+                    color: isActive ? "#4ECDC4" : "#374151",
+                  }}
+                  data-ocid={`sidebar.${tool.id.toLowerCase()}.button`}
+                  onMouseEnter={(e) => {
+                    if (!isActive)
+                      (
+                        e.currentTarget as HTMLButtonElement
+                      ).style.backgroundColor = "#F8F9FA";
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isActive)
+                      (
+                        e.currentTarget as HTMLButtonElement
+                      ).style.backgroundColor = "transparent";
+                  }}
+                >
+                  <Icon className="h-4 w-4 flex-shrink-0" />
+                  <span
+                    className="text-sm flex-1 leading-tight"
+                    style={{ color: isActive ? "#4ECDC4" : "#374151" }}
+                  >
+                    {tool.label}
+                  </span>
+                  {tool.beta && (
+                    <span
+                      className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: "#CCFAF7", color: "#0D9488" }}
+                    >
+                      Beta
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+    </ScrollArea>
+  );
+}
 
 export default function DesignTool({ onBack }: DesignToolProps) {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string>("");
   const [selectedRoom, setSelectedRoom] = useState("Living Room");
-  const [selectedStyle, setSelectedStyle] = useState("");
-  const [customInstructions, setCustomInstructions] = useState("");
+  const [selectedTool, setSelectedTool] = useState<ToolId>("ADD_FURNITURE");
+  const [inputText, setInputText] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [statusMsg, setStatusMsg] = useState("");
-  const [generatedImageUrl, setGeneratedImageUrl] = useState<string>("");
-  const [isDragging, setIsDragging] = useState(false);
-  const [refinementInstructions, setRefinementInstructions] = useState("");
-  const [isRefining, setIsRefining] = useState(false);
-  const [iterationCount, setIterationCount] = useState(1);
+  const [generations, setGenerations] = useState<Generation[]>([]);
+  const [videoGenerations, setVideoGenerations] = useState<VideoGeneration[]>(
+    [],
+  );
+  const [refineTargetId, setRefineTargetId] = useState<string | null>(null);
+  const [videoRefineTargetId, setVideoRefineTargetId] = useState<string | null>(
+    null,
+  );
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [selectedDuration, setSelectedDuration] = useState(4);
+  const [selectedResolution, setSelectedResolution] = useState("1280x720");
+  const [historyTab, setHistoryTab] = useState<"images" | "videos">("images");
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
     null,
   );
+  const chatBottomRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const activeTool =
+    ALL_TOOLS.find((t) => t.id === selectedTool) ?? ALL_TOOLS[0];
+  const isVideoMode = selectedTool === "IMAGE_TO_VIDEO";
+
+  const totalCount = generations.length + videoGenerations.length;
+
+  useEffect(() => {
+    if (totalCount > 0) {
+      chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [totalCount]);
 
   const handleFile = useCallback((file: File) => {
     if (!file.type.startsWith("image/")) {
@@ -77,168 +422,280 @@ export default function DesignTool({ onBack }: DesignToolProps) {
       return;
     }
     setUploadedFile(file);
-    setGeneratedImageUrl("");
-    setIterationCount(1);
     const reader = new FileReader();
     reader.onload = (e) => setUploadedImageUrl(e.target?.result as string);
     reader.readAsDataURL(file);
   }, []);
 
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      setIsDragging(false);
-      const file = e.dataTransfer.files[0];
-      if (file) handleFile(file);
-    },
-    [handleFile],
-  );
-
-  const clearUpload = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const clearUpload = () => {
     setUploadedFile(null);
     setUploadedImageUrl("");
-    setGeneratedImageUrl("");
-    setIterationCount(1);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const startProgress = () => {
+  const startProgress = (isVideo = false) => {
+    const messages = isVideo ? VIDEO_STATUS_MESSAGES : STATUS_MESSAGES;
     let msgIndex = 0;
-    setStatusMsg(STATUS_MESSAGES[0]);
+    setStatusMsg(messages[0]);
     setProgress(0);
+    // Video progress is slower (can take 1-2 min)
+    const increment = isVideo ? 0.5 : 2;
+    const interval = isVideo ? 800 : 600;
     progressIntervalRef.current = setInterval(() => {
       setProgress((prev) => {
-        const next = prev + 2;
-        const msgI = Math.floor((next / 100) * STATUS_MESSAGES.length);
-        if (msgI !== msgIndex && msgI < STATUS_MESSAGES.length) {
+        const next = prev + increment;
+        const msgI = Math.floor((next / 100) * messages.length);
+        if (msgI !== msgIndex && msgI < messages.length) {
           msgIndex = msgI;
-          setStatusMsg(STATUS_MESSAGES[msgI]);
+          setStatusMsg(messages[msgI]);
         }
         return next >= 90 ? 90 : next;
       });
-    }, 600);
+    }, interval);
   };
 
   const stopProgress = () => {
     if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
   };
 
-  const handleGenerate = async () => {
-    if (!uploadedImageUrl) {
+  const handleVideoSend = async () => {
+    if (!uploadedFile || !uploadedImageUrl) {
       toast.error("Please upload a room photo first");
       return;
     }
+    if (isGenerating) return;
+
+    const prompt =
+      inputText.trim() ||
+      "Animate this room with smooth, cinematic camera movement and subtle lighting transitions.";
+    const refineTarget = videoRefineTargetId
+      ? videoGenerations.find((v) => v.id === videoRefineTargetId)
+      : null;
+
+    // Use original image from refine target or current upload
+    const sourceFile = uploadedFile;
+    const sourceImageUrl = refineTarget
+      ? refineTarget.originalImageUrl
+      : uploadedImageUrl;
 
     setIsGenerating(true);
-    setGeneratedImageUrl("");
-    startProgress();
-
+    startProgress(true);
     try {
       const puter = (window as any).puter;
       if (!puter) throw new Error("Puter.js not loaded");
-
-      const customPart = customInstructions ? `${customInstructions}.` : "";
-      let prompt: string;
-      if (!selectedStyle || selectedStyle === "No Style") {
-        prompt = `Enhance and redecorate this ${selectedRoom}. ${customPart} Keep the room layout and structure identical.`;
-      } else {
-        prompt = `Redesign this ${selectedRoom} in a ${selectedStyle} interior design style. ${customPart} Keep the room layout and structure identical, only change the decor, furniture, colors and materials.`;
-      }
-
-      const imageElement = await puter.ai.txt2img(prompt, {
-        model: "black-forest-labs/flux.1-kontext-pro",
-        image_url: uploadedImageUrl,
+      const videoEl = await puter.ai.txt2vid(prompt, {
+        model: "sora-2",
+        seconds: selectedDuration,
+        size: selectedResolution,
+        input_reference: sourceFile,
       });
-
       stopProgress();
       setProgress(100);
-      setStatusMsg("Design complete!");
-      setGeneratedImageUrl(imageElement.src);
-      setIterationCount(1);
-      toast.success("Your room has been redesigned!");
+      setStatusMsg("Video ready!");
+      const videoUrl = videoEl.src || videoEl.currentSrc;
+      const newVidGen: VideoGeneration = {
+        id: crypto.randomUUID(),
+        originalImageUrl: sourceImageUrl,
+        videoUrl,
+        prompt,
+        duration: selectedDuration,
+        resolution: selectedResolution,
+        timestamp: new Date(),
+      };
+      setVideoGenerations((prev) => [...prev, newVidGen]);
+      setVideoRefineTargetId(null);
+      setInputText("");
+      toast.success("Video generated!");
     } catch (err) {
       stopProgress();
       console.error(err);
-      toast.error("Generation failed. Please try again.");
+      toast.error("Video generation failed. Please try again.");
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const handleRefine = async () => {
-    if (!generatedImageUrl) return;
-    if (!refinementInstructions.trim()) {
-      toast.error("Please add refinement instructions");
+  const handleSend = async () => {
+    if (isVideoMode) {
+      await handleVideoSend();
       return;
     }
 
-    setIsRefining(true);
-    startProgress();
+    if (!uploadedImageUrl) {
+      toast.error("Please upload a room photo first");
+      return;
+    }
+    if (isGenerating) return;
 
-    try {
-      const puter = (window as any).puter;
-      if (!puter) throw new Error("Puter.js not loaded");
+    const instructions = inputText.trim();
 
-      const prompt = `Refine this room design: ${refinementInstructions}. Keep the overall style and layout.`;
-
-      const imageElement = await puter.ai.txt2img(prompt, {
-        model: "black-forest-labs/flux.1-kontext-pro",
-        image_url: generatedImageUrl,
-      });
-
-      stopProgress();
-      setProgress(100);
-      setStatusMsg("Refinement complete!");
-      setGeneratedImageUrl(imageElement.src);
-      setIterationCount((prev) => prev + 1);
-      setRefinementInstructions("");
-      toast.success("Design refined!");
-    } catch (err) {
-      stopProgress();
-      console.error(err);
-      toast.error("Refinement failed. Please try again.");
-    } finally {
-      setIsRefining(false);
+    if (refineTargetId) {
+      const target = generations.find((g) => g.id === refineTargetId);
+      if (!target) return;
+      setIsGenerating(true);
+      startProgress();
+      try {
+        const puter = (window as any).puter;
+        if (!puter) throw new Error("Puter.js not loaded");
+        const prompt = `STRICT INSTRUCTIONS (you MUST follow these exactly): ${instructions || "improve the overall look, keep structure identical"}. Refine this room design. Keep the overall layout and structure.`;
+        const imageElement = await puter.ai.txt2img(prompt, {
+          model: "black-forest-labs/flux.1-kontext-pro",
+          image_url: target.generatedImageUrl,
+        });
+        stopProgress();
+        setProgress(100);
+        setStatusMsg("Refinement complete!");
+        const newGen: Generation = {
+          id: crypto.randomUUID(),
+          originalImageUrl: target.originalImageUrl,
+          generatedImageUrl: imageElement.src,
+          tool: target.tool,
+          roomType: target.roomType,
+          instructions,
+          version: target.version + 1,
+          timestamp: new Date(),
+        };
+        setGenerations((prev) => [...prev, newGen]);
+        setRefineTargetId(null);
+        setInputText("");
+        toast.success("Design refined!");
+      } catch (err) {
+        stopProgress();
+        console.error(err);
+        toast.error("Refinement failed. Please try again.");
+      } finally {
+        setIsGenerating(false);
+      }
+    } else {
+      setIsGenerating(true);
+      startProgress();
+      try {
+        const puter = (window as any).puter;
+        if (!puter) throw new Error("Puter.js not loaded");
+        const strictConstraints = instructions
+          ? `STRICT INSTRUCTIONS (you MUST follow these exactly): ${instructions}. `
+          : "";
+        const basePrompt = activeTool.prompt(selectedRoom);
+        const prompt = `${strictConstraints}${basePrompt}`;
+        const imageElement = await puter.ai.txt2img(prompt, {
+          model: "black-forest-labs/flux.1-kontext-pro",
+          image_url: uploadedImageUrl,
+        });
+        stopProgress();
+        setProgress(100);
+        setStatusMsg("Done!");
+        const newGen: Generation = {
+          id: crypto.randomUUID(),
+          originalImageUrl: uploadedImageUrl,
+          generatedImageUrl: imageElement.src,
+          tool: activeTool.label,
+          roomType: selectedRoom,
+          instructions,
+          version: 1,
+          timestamp: new Date(),
+        };
+        setGenerations((prev) => [...prev, newGen]);
+        setInputText("");
+        toast.success("Transformation complete!");
+      } catch (err) {
+        stopProgress();
+        console.error(err);
+        toast.error("Generation failed. Please try again.");
+      } finally {
+        setIsGenerating(false);
+      }
     }
   };
 
-  const handleDownload = () => {
+  const handleDownload = (gen: Generation) => {
     const a = document.createElement("a");
-    a.href = generatedImageUrl;
-    a.download = `roomai-${(selectedStyle || "enhanced").toLowerCase()}-v${iterationCount}.jpg`;
+    a.href = gen.generatedImageUrl;
+    a.download = `roomai-${gen.tool.toLowerCase().replace(/ /g, "-")}-v${gen.version}.jpg`;
     a.click();
   };
+
+  const handleVideoDownload = (gen: VideoGeneration) => {
+    const a = document.createElement("a");
+    a.href = gen.videoUrl;
+    a.download = `roomai-video-${gen.duration}s.mp4`;
+    a.click();
+  };
+
+  const startRefine = (genId: string) => {
+    setRefineTargetId(genId);
+    setVideoRefineTargetId(null);
+    setInputText("");
+    setTimeout(() => inputRef.current?.focus(), 50);
+  };
+
+  const cancelRefine = () => {
+    setRefineTargetId(null);
+    setInputText("");
+  };
+
+  const startVideoRefine = (genId: string) => {
+    setVideoRefineTargetId(genId);
+    setRefineTargetId(null);
+    setSelectedTool("IMAGE_TO_VIDEO");
+    setInputText("");
+    setTimeout(() => inputRef.current?.focus(), 50);
+  };
+
+  const cancelVideoRefine = () => {
+    setVideoRefineTargetId(null);
+    setInputText("");
+  };
+
+  const refineTarget = refineTargetId
+    ? generations.find((g) => g.id === refineTargetId)
+    : null;
+  const videoRefineTarget = videoRefineTargetId
+    ? videoGenerations.find((v) => v.id === videoRefineTargetId)
+    : null;
+
+  // Merge and sort by timestamp for chronological chat feed
+  type ChatItem =
+    | { type: "image"; data: Generation }
+    | { type: "video"; data: VideoGeneration };
+  const chatItems: ChatItem[] = [
+    ...generations.map((g) => ({ type: "image" as const, data: g })),
+    ...videoGenerations.map((v) => ({ type: "video" as const, data: v })),
+  ].sort((a, b) => a.data.timestamp.getTime() - b.data.timestamp.getTime());
 
   const year = new Date().getFullYear();
   const caffeineHref = `https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(typeof window !== "undefined" ? window.location.hostname : "")}`;
 
   return (
     <div
-      className="flex h-screen overflow-hidden"
-      style={{ backgroundColor: "#0F0F1A" }}
+      className="flex flex-col h-screen"
+      style={{ backgroundColor: "#FFFFFF" }}
     >
-      {/* Sidebar */}
-      <aside
-        className="flex flex-col flex-shrink-0"
+      {/* Top Bar */}
+      <header
+        className="flex-shrink-0 flex items-center justify-between px-4 py-3 z-10"
         style={{
-          width: 280,
-          backgroundColor: "#16213E",
-          borderRight: "1px solid #1E2D4F",
+          backgroundColor: "#F8F9FA",
+          borderBottom: "1px solid #E2E8F0",
+          height: 56,
         }}
       >
-        {/* Logo / Back */}
-        <div
-          className="flex items-center gap-3 px-5 py-4"
-          style={{ borderBottom: "1px solid #1E2D4F" }}
-        >
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setSidebarOpen(true)}
+            className="md:hidden flex items-center justify-center w-8 h-8 rounded-lg transition-colors hover:bg-gray-100"
+            data-ocid="design.sidebar.open_modal_button"
+          >
+            <Menu className="h-4 w-4" style={{ color: "#6B7280" }} />
+          </button>
+
           <button
             type="button"
             onClick={onBack}
-            className="flex items-center justify-center w-8 h-8 rounded-lg transition-colors hover:bg-white/10"
+            className="flex items-center justify-center w-8 h-8 rounded-lg transition-colors hover:bg-gray-100"
             data-ocid="design.back.button"
           >
-            <ArrowLeft className="h-4 w-4" style={{ color: "#A0AEC0" }} />
+            <ArrowLeft className="h-4 w-4" style={{ color: "#6B7280" }} />
           </button>
           <div className="flex items-center gap-2">
             <div
@@ -249,155 +706,677 @@ export default function DesignTool({ onBack }: DesignToolProps) {
             >
               R
             </div>
-            <span className="font-bold text-sm" style={{ color: "#F0F4F8" }}>
+            <span className="font-bold text-sm" style={{ color: "#111827" }}>
               RoomAI
             </span>
           </div>
         </div>
 
-        <ScrollArea className="flex-1">
-          <div className="px-4 py-4 space-y-5">
-            {/* Room Type */}
-            <div>
-              <p
-                className="text-xs font-semibold uppercase tracking-widest mb-3"
-                style={{ color: "#4A6FA5" }}
+        <div className="hidden md:flex items-center gap-2">
+          <span
+            className="text-xs px-3 py-1 rounded-full"
+            style={{
+              backgroundColor: isVideoMode ? "#EEF2FF" : "#E6F7F6",
+              color: isVideoMode ? "#6366F1" : "#4ECDC4",
+              fontWeight: 600,
+            }}
+          >
+            {isVideoMode && <Clapperboard className="inline h-3 w-3 mr-1" />}
+            {activeTool.label}
+            {activeTool.beta && (
+              <span
+                className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full"
+                style={{ backgroundColor: "#CCFAF7", color: "#0D9488" }}
               >
-                Room Type
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {ROOM_TYPES.map((room) => (
-                  <button
-                    key={room}
-                    type="button"
-                    className="px-3 py-1.5 rounded-full text-xs font-medium transition-all"
-                    style={{
-                      backgroundColor:
-                        selectedRoom === room ? "#4ECDC4" : "#1E2D4F",
-                      color: selectedRoom === room ? "#0F0F1A" : "#A0AEC0",
-                    }}
-                    onClick={() => setSelectedRoom(room)}
-                    data-ocid="design.room.toggle"
-                  >
-                    {room}
-                  </button>
-                ))}
-              </div>
+                Beta
+              </span>
+            )}
+          </span>
+        </div>
+
+        <Sheet>
+          <SheetTrigger asChild>
+            <button
+              type="button"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors hover:bg-gray-100"
+              style={{ color: "#6B7280", border: "1px solid #E2E8F0" }}
+              data-ocid="design.history.button"
+            >
+              <Clock className="h-3.5 w-3.5" />
+              History
+              {totalCount > 0 && (
+                <span
+                  className="ml-1 px-1.5 py-0.5 rounded-full text-xs font-bold"
+                  style={{ backgroundColor: "#4ECDC4", color: "#FFFFFF" }}
+                >
+                  {totalCount}
+                </span>
+              )}
+            </button>
+          </SheetTrigger>
+          <SheetContent
+            side="right"
+            className="w-[360px]"
+            style={{
+              backgroundColor: "#FFFFFF",
+              borderLeft: "1px solid #E2E8F0",
+            }}
+          >
+            <SheetHeader>
+              <SheetTitle style={{ color: "#111827" }}>
+                Generation History
+              </SheetTitle>
+            </SheetHeader>
+
+            {/* Tab toggle */}
+            <div
+              className="flex mt-3 mb-1 rounded-lg overflow-hidden"
+              style={{ border: "1px solid #E2E8F0" }}
+            >
+              <button
+                type="button"
+                onClick={() => setHistoryTab("images")}
+                className="flex-1 py-1.5 text-xs font-medium transition-colors"
+                style={{
+                  backgroundColor:
+                    historyTab === "images" ? "#4ECDC4" : "#FFFFFF",
+                  color: historyTab === "images" ? "#FFFFFF" : "#6B7280",
+                }}
+                data-ocid="design.history.images.tab"
+              >
+                Images ({generations.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setHistoryTab("videos")}
+                className="flex-1 py-1.5 text-xs font-medium transition-colors"
+                style={{
+                  backgroundColor:
+                    historyTab === "videos" ? "#6366F1" : "#FFFFFF",
+                  color: historyTab === "videos" ? "#FFFFFF" : "#6B7280",
+                }}
+                data-ocid="design.history.videos.tab"
+              >
+                Videos ({videoGenerations.length})
+              </button>
             </div>
 
-            {/* Style Selection */}
-            <div>
-              <p
-                className="text-xs font-semibold uppercase tracking-widest mb-3"
-                style={{ color: "#4A6FA5" }}
-              >
-                Design Style
-              </p>
-              <div className="grid grid-cols-2 gap-2">
-                {STYLES.map((s) => {
-                  const isSelected =
-                    selectedStyle === s.name ||
-                    (s.name === "No Style" && !selectedStyle);
-                  return (
-                    <button
-                      key={s.name}
-                      type="button"
-                      className="relative rounded-xl overflow-hidden text-left transition-all"
-                      style={{
-                        backgroundColor: s.color,
-                        border: isSelected
-                          ? "2px solid #4ECDC4"
-                          : "2px solid transparent",
-                        outline: isSelected ? "none" : undefined,
-                      }}
-                      onClick={() => {
-                        if (s.name === "No Style") {
-                          setSelectedStyle("");
-                        } else {
-                          setSelectedStyle(
-                            selectedStyle === s.name ? "" : s.name,
-                          );
-                        }
-                      }}
-                      data-ocid="design.style.toggle"
-                    >
-                      <div className="p-3">
-                        <div className="text-xl mb-1">{s.emoji}</div>
-                        <div
-                          className="text-xs font-medium leading-tight"
-                          style={{ color: isSelected ? "#4ECDC4" : "#E2E8F0" }}
-                        >
-                          {s.name}
+            <ScrollArea className="h-[calc(100vh-120px)] mt-2 pr-1">
+              {historyTab === "images" ? (
+                generations.length === 0 ? (
+                  <div
+                    className="flex flex-col items-center justify-center py-20 gap-3"
+                    data-ocid="design.history.empty_state"
+                  >
+                    <Clock className="h-10 w-10" style={{ color: "#E2E8F0" }} />
+                    <p className="text-sm" style={{ color: "#6B7280" }}>
+                      No image generations yet
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3 pb-8">
+                    {generations.map((gen, idx) => (
+                      <div
+                        key={gen.id}
+                        className="rounded-xl overflow-hidden"
+                        style={{
+                          border: "1px solid #E2E8F0",
+                          backgroundColor: "#F8F9FA",
+                        }}
+                        data-ocid={`design.history.item.${idx + 1}`}
+                      >
+                        <img
+                          src={gen.generatedImageUrl}
+                          alt={`Version ${gen.version}`}
+                          className="w-full h-32 object-cover"
+                        />
+                        <div className="p-3">
+                          <div className="flex items-center justify-between mb-1">
+                            <span
+                              className="text-xs font-semibold px-2 py-0.5 rounded-full"
+                              style={{
+                                backgroundColor: "#E6F7F6",
+                                color: "#4ECDC4",
+                              }}
+                            >
+                              Version {gen.version}
+                            </span>
+                            <span
+                              className="text-xs"
+                              style={{ color: "#9CA3AF" }}
+                            >
+                              {gen.timestamp.toLocaleTimeString([], {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </span>
+                          </div>
+                          <p
+                            className="text-xs mt-1"
+                            style={{ color: "#6B7280" }}
+                          >
+                            {gen.roomType} · {gen.tool}
+                          </p>
+                          {gen.instructions && (
+                            <p
+                              className="text-xs mt-1 truncate"
+                              style={{ color: "#9CA3AF" }}
+                            >
+                              "{gen.instructions}"
+                            </p>
+                          )}
                         </div>
                       </div>
-                      {isSelected && (
-                        <div
-                          className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full flex items-center justify-center"
-                          style={{ backgroundColor: "#4ECDC4" }}
-                        >
-                          <CheckCircle
-                            className="w-3 h-3"
-                            style={{ color: "#0F0F1A" }}
-                          />
+                    ))}
+                  </div>
+                )
+              ) : videoGenerations.length === 0 ? (
+                <div
+                  className="flex flex-col items-center justify-center py-20 gap-3"
+                  data-ocid="design.history.videos.empty_state"
+                >
+                  <Clapperboard
+                    className="h-10 w-10"
+                    style={{ color: "#E2E8F0" }}
+                  />
+                  <p className="text-sm" style={{ color: "#6B7280" }}>
+                    No videos yet
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3 pb-8">
+                  {videoGenerations.map((vid, idx) => (
+                    <div
+                      key={vid.id}
+                      className="rounded-xl overflow-hidden"
+                      style={{
+                        border: "1px solid #E2E8F0",
+                        backgroundColor: "#F8F9FA",
+                      }}
+                      data-ocid={`design.history.video.item.${idx + 1}`}
+                    >
+                      <video
+                        src={vid.videoUrl}
+                        className="w-full h-32 object-cover"
+                        muted
+                      />
+                      <div className="p-3">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span
+                            className="text-xs font-semibold px-2 py-0.5 rounded-full"
+                            style={{
+                              backgroundColor: "#EEF2FF",
+                              color: "#6366F1",
+                            }}
+                          >
+                            {vid.duration}s
+                          </span>
+                          <span
+                            className="text-xs px-2 py-0.5 rounded-full"
+                            style={{
+                              backgroundColor: "#F3F4F6",
+                              color: "#6B7280",
+                            }}
+                          >
+                            {vid.resolution}
+                          </span>
+                          <span
+                            className="text-xs ml-auto"
+                            style={{ color: "#9CA3AF" }}
+                          >
+                            {vid.timestamp.toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
                         </div>
-                      )}
-                    </button>
-                  );
-                })}
+                        {vid.prompt && (
+                          <p
+                            className="text-xs mt-1 truncate"
+                            style={{ color: "#9CA3AF" }}
+                          >
+                            "{vid.prompt}"
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          </SheetContent>
+        </Sheet>
+      </header>
+
+      {/* Body: sidebar + main */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Desktop Sidebar */}
+        <aside
+          className="hidden md:flex flex-col flex-shrink-0"
+          style={{
+            width: 220,
+            backgroundColor: "#FFFFFF",
+            borderRight: "1px solid #E2E8F0",
+          }}
+          data-ocid="design.sidebar.panel"
+        >
+          <SidebarContent
+            selectedTool={selectedTool}
+            onSelect={setSelectedTool}
+          />
+        </aside>
+
+        {/* Mobile Sidebar Sheet */}
+        <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+          <SheetContent
+            side="left"
+            className="p-0 w-[240px]"
+            style={{
+              backgroundColor: "#FFFFFF",
+              borderRight: "1px solid #E2E8F0",
+            }}
+            data-ocid="design.sidebar.modal"
+          >
+            <SheetHeader
+              className="px-3 py-3"
+              style={{ borderBottom: "1px solid #E2E8F0" }}
+            >
+              <SheetTitle className="text-sm" style={{ color: "#111827" }}>
+                Tools
+              </SheetTitle>
+            </SheetHeader>
+            <SidebarContent
+              selectedTool={selectedTool}
+              onSelect={(id) => {
+                setSelectedTool(id);
+                setSidebarOpen(false);
+              }}
+            />
+          </SheetContent>
+        </Sheet>
+
+        {/* Main area */}
+        <div className="flex flex-col flex-1 overflow-hidden">
+          {/* Chat Area */}
+          <main className="flex-1 overflow-y-auto">
+            {chatItems.length === 0 && !isGenerating ? (
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex flex-col items-center justify-center h-full gap-4 px-4"
+                data-ocid="design.chat.empty_state"
+              >
+                <div
+                  className="w-20 h-20 rounded-2xl flex items-center justify-center"
+                  style={{
+                    background: isVideoMode
+                      ? "linear-gradient(135deg, #EEF2FF, #F5F3FF)"
+                      : "linear-gradient(135deg, #E6F7F6, #F0FAFA)",
+                    border: isVideoMode
+                      ? "1px solid #C7D2FE"
+                      : "1px solid #B2EBE8",
+                  }}
+                >
+                  {isVideoMode ? (
+                    <Clapperboard
+                      className="h-9 w-9"
+                      style={{ color: "#6366F1" }}
+                    />
+                  ) : (
+                    <Wand2 className="h-9 w-9" style={{ color: "#4ECDC4" }} />
+                  )}
+                </div>
+                <div className="text-center">
+                  <p
+                    className="text-lg font-semibold mb-1"
+                    style={{ color: "#111827" }}
+                  >
+                    {activeTool.label}
+                  </p>
+                  <p className="text-sm" style={{ color: "#6B7280" }}>
+                    {isVideoMode
+                      ? "Upload a photo and describe the animation below"
+                      : "Upload a photo below to get started"}
+                  </p>
+                </div>
+              </motion.div>
+            ) : (
+              <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
+                <AnimatePresence>
+                  {chatItems.map((item) => {
+                    if (item.type === "image") {
+                      const gen = item.data;
+                      return (
+                        <motion.div
+                          key={gen.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.35 }}
+                          className="rounded-2xl overflow-hidden"
+                          style={{
+                            backgroundColor: "#FFFFFF",
+                            border: "1px solid #E2E8F0",
+                          }}
+                          data-ocid="design.chat.card"
+                        >
+                          <div
+                            className="flex items-center justify-between px-4 py-3"
+                            style={{ borderBottom: "1px solid #E2E8F0" }}
+                          >
+                            <div className="flex items-center gap-2">
+                              <CheckCircle
+                                className="h-4 w-4"
+                                style={{ color: "#4ECDC4" }}
+                              />
+                              <span
+                                className="text-sm font-semibold"
+                                style={{ color: "#111827" }}
+                              >
+                                Version {gen.version}
+                              </span>
+                              <span
+                                className="text-xs px-2 py-0.5 rounded-full"
+                                style={{
+                                  backgroundColor: "#E6F7F6",
+                                  color: "#4ECDC4",
+                                }}
+                              >
+                                {gen.tool}
+                              </span>
+                              <span
+                                className="text-xs"
+                                style={{ color: "#9CA3AF" }}
+                              >
+                                · {gen.roomType}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => startRefine(gen.id)}
+                                className="text-xs px-3 py-1 rounded-lg transition-colors hover:bg-teal-50"
+                                style={{
+                                  color: "#4ECDC4",
+                                  border: "1px solid #B2EBE8",
+                                }}
+                                data-ocid="design.chat.edit_button"
+                              >
+                                Refine this
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDownload(gen)}
+                                className="flex items-center gap-1.5 text-xs px-3 py-1 rounded-lg transition-colors hover:bg-gray-50"
+                                style={{
+                                  color: "#6B7280",
+                                  border: "1px solid #E2E8F0",
+                                }}
+                                data-ocid="design.chat.download.button"
+                              >
+                                <Download className="h-3 w-3" />
+                                Save
+                              </button>
+                            </div>
+                          </div>
+                          <div className="relative">
+                            <BeforeAfterSlider
+                              beforeSrc={gen.originalImageUrl}
+                              afterSrc={gen.generatedImageUrl}
+                            />
+                          </div>
+                          {gen.instructions && (
+                            <div
+                              className="px-4 py-2"
+                              style={{ borderTop: "1px solid #E2E8F0" }}
+                            >
+                              <p
+                                className="text-xs"
+                                style={{ color: "#9CA3AF" }}
+                              >
+                                "{gen.instructions}"
+                              </p>
+                            </div>
+                          )}
+                        </motion.div>
+                      );
+                    }
+
+                    // Video card
+                    const vid = item.data;
+                    return (
+                      <motion.div
+                        key={vid.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.35 }}
+                        className="rounded-2xl overflow-hidden"
+                        style={{
+                          backgroundColor: "#FFFFFF",
+                          border: "1px solid #C7D2FE",
+                        }}
+                        data-ocid="design.chat.video.card"
+                      >
+                        <div
+                          className="flex items-center justify-between px-4 py-3"
+                          style={{
+                            borderBottom: "1px solid #E2E8F0",
+                            backgroundColor: "#F5F3FF",
+                          }}
+                        >
+                          <div className="flex items-center gap-2">
+                            <Clapperboard
+                              className="h-4 w-4"
+                              style={{ color: "#6366F1" }}
+                            />
+                            <span
+                              className="text-sm font-semibold"
+                              style={{ color: "#111827" }}
+                            >
+                              Video Generated
+                            </span>
+                            <Badge
+                              className="text-[10px] px-2 py-0.5"
+                              style={{
+                                backgroundColor: "#EEF2FF",
+                                color: "#6366F1",
+                                border: "none",
+                              }}
+                            >
+                              {vid.duration}s
+                            </Badge>
+                            <Badge
+                              className="text-[10px] px-2 py-0.5"
+                              style={{
+                                backgroundColor: "#F3F4F6",
+                                color: "#6B7280",
+                                border: "none",
+                              }}
+                            >
+                              {vid.resolution}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => startVideoRefine(vid.id)}
+                              className="text-xs px-3 py-1 rounded-lg transition-colors hover:bg-indigo-50"
+                              style={{
+                                color: "#6366F1",
+                                border: "1px solid #C7D2FE",
+                              }}
+                              data-ocid="design.chat.video.edit_button"
+                            >
+                              Re-generate
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleVideoDownload(vid)}
+                              className="flex items-center gap-1.5 text-xs px-3 py-1 rounded-lg transition-colors hover:bg-gray-50"
+                              style={{
+                                color: "#6B7280",
+                                border: "1px solid #E2E8F0",
+                              }}
+                              data-ocid="design.chat.video.download.button"
+                            >
+                              <Download className="h-3 w-3" />
+                              Download
+                            </button>
+                          </div>
+                        </div>
+                        <div className="p-4">
+                          <video
+                            controls
+                            src={vid.videoUrl}
+                            className="w-full rounded-lg"
+                            style={{ maxHeight: 400 }}
+                          >
+                            <track kind="captions" />
+                          </video>
+                        </div>
+                        {vid.prompt && (
+                          <div className="px-4 pb-3">
+                            <p className="text-xs" style={{ color: "#9CA3AF" }}>
+                              "{vid.prompt}"
+                            </p>
+                          </div>
+                        )}
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
+
+                <AnimatePresence>
+                  {isGenerating && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 16 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      className="rounded-2xl p-5"
+                      style={{
+                        backgroundColor: isVideoMode ? "#F5F3FF" : "#F8F9FA",
+                        border: `1px solid ${isVideoMode ? "#C7D2FE" : "#E2E8F0"}`,
+                      }}
+                      data-ocid="design.generate.loading_state"
+                    >
+                      <div className="flex items-center gap-3 mb-4">
+                        <Loader2
+                          className="h-5 w-5 animate-spin"
+                          style={{ color: isVideoMode ? "#6366F1" : "#4ECDC4" }}
+                        />
+                        <span
+                          className="text-sm font-medium"
+                          style={{ color: "#111827" }}
+                        >
+                          {statusMsg}
+                        </span>
+                        {isVideoMode && (
+                          <span
+                            className="text-xs"
+                            style={{ color: "#9CA3AF" }}
+                          >
+                            (may take 1-2 min)
+                          </span>
+                        )}
+                      </div>
+                      <Progress value={progress} className="h-1.5" />
+                      <p className="text-xs mt-2" style={{ color: "#9CA3AF" }}>
+                        {Math.round(progress)}% complete
+                      </p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <div ref={chatBottomRef} />
               </div>
-            </div>
-          </div>
-        </ScrollArea>
+            )}
+          </main>
 
-        {/* Footer attribution in sidebar */}
-        <div className="px-4 py-3" style={{ borderTop: "1px solid #1E2D4F" }}>
-          <p className="text-xs text-center" style={{ color: "#4A6FA5" }}>
-            © {year}. Built with ❤️ using{" "}
-            <a
-              href={caffeineHref}
-              className="underline hover:opacity-80"
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ color: "#4ECDC4" }}
-            >
-              caffeine.ai
-            </a>
-          </p>
-        </div>
-      </aside>
+          {/* Bottom Input Bar */}
+          <div
+            className="flex-shrink-0"
+            style={{
+              backgroundColor: "#FFFFFF",
+              borderTop: "1px solid #E2E8F0",
+            }}
+          >
+            <AnimatePresence>
+              {(refineTarget || videoRefineTarget) && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="flex items-center justify-between px-4 py-2"
+                  style={{
+                    backgroundColor: videoRefineTarget ? "#F5F3FF" : "#F0FAFA",
+                    borderBottom: `1px solid ${videoRefineTarget ? "#C7D2FE" : "#B2EBE8"}`,
+                  }}
+                >
+                  <span
+                    className="text-xs font-medium"
+                    style={{ color: videoRefineTarget ? "#6366F1" : "#4ECDC4" }}
+                  >
+                    {videoRefineTarget
+                      ? "Re-generating video — describe changes or adjust duration/resolution below"
+                      : `Refining Version ${refineTarget?.version} — describe your changes below`}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={
+                      videoRefineTarget ? cancelVideoRefine : cancelRefine
+                    }
+                    className="flex items-center justify-center w-5 h-5 rounded-full hover:bg-gray-100"
+                    style={{ color: videoRefineTarget ? "#6366F1" : "#4ECDC4" }}
+                    data-ocid="design.refine.cancel_button"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-      {/* Main Content */}
-      <main
-        className="flex-1 overflow-y-auto"
-        style={{ backgroundColor: "#F7F8FA" }}
-      >
-        <div className="max-w-4xl mx-auto px-6 py-8 space-y-6">
-          {/* Upload Zone */}
-          <section>
-            <h2
-              className="text-base font-semibold mb-3"
-              style={{ color: "#1A202C" }}
-            >
-              Upload Your Room Photo
-            </h2>
-            <label
-              htmlFor="room-file-input"
-              className="block rounded-2xl border-2 border-dashed transition-colors cursor-pointer"
-              style={{
-                borderColor: isDragging ? "#4ECDC4" : "#CBD5E0",
-                backgroundColor: isDragging ? "#E6FAFA" : "#FFFFFF",
-                minHeight: 200,
-              }}
-              onDrop={handleDrop}
-              onDragOver={(e) => {
-                e.preventDefault();
-                setIsDragging(true);
-              }}
-              onDragLeave={() => setIsDragging(false)}
-              data-ocid="design.upload.dropzone"
-            >
+            <AnimatePresence>
+              {uploadedImageUrl && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="flex items-center gap-3 px-4 pt-3"
+                >
+                  <div className="relative">
+                    <img
+                      src={uploadedImageUrl}
+                      alt="Uploaded"
+                      className="w-12 h-12 object-cover rounded-lg"
+                      style={{ border: "1px solid #E2E8F0" }}
+                    />
+                    <button
+                      type="button"
+                      onClick={clearUpload}
+                      className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full flex items-center justify-center"
+                      style={{ backgroundColor: "#9CA3AF", color: "white" }}
+                      data-ocid="design.upload.delete_button"
+                    >
+                      <X className="h-2.5 w-2.5" />
+                    </button>
+                  </div>
+                  <p className="text-xs" style={{ color: "#6B7280" }}>
+                    {uploadedFile?.name}
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <div className="flex items-center gap-2 px-4 py-3">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-xl transition-colors hover:bg-gray-100"
+                style={{ border: "1px solid #E2E8F0", color: "#6B7280" }}
+                data-ocid="design.upload.button"
+              >
+                <ImagePlus className="h-5 w-5" />
+              </button>
               <input
-                id="room-file-input"
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
@@ -407,246 +1386,190 @@ export default function DesignTool({ onBack }: DesignToolProps) {
                 }
                 data-ocid="design.upload.input"
               />
-              {uploadedFile ? (
-                <div className="relative">
-                  <img
-                    src={uploadedImageUrl}
-                    alt="Uploaded room"
-                    className="w-full h-56 object-cover rounded-2xl"
-                  />
-                  <button
-                    type="button"
-                    className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white shadow-md flex items-center justify-center hover:bg-red-50 transition-colors"
-                    onClick={clearUpload}
-                    data-ocid="design.upload.delete_button"
+
+              <Input
+                ref={inputRef}
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                placeholder={
+                  videoRefineTarget
+                    ? "Describe changes for the new video..."
+                    : refineTarget
+                      ? "Describe changes to apply..."
+                      : isVideoMode
+                        ? "Describe the video animation..."
+                        : "Add instructions (optional)..."
+                }
+                className="flex-1 h-10 text-sm"
+                style={{
+                  backgroundColor: "#FFFFFF",
+                  border: "1px solid #E2E8F0",
+                  color: "#111827",
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
+                data-ocid="design.chat.input"
+              />
+
+              {isVideoMode ? (
+                <>
+                  {/* Duration selector */}
+                  <Select
+                    value={String(selectedDuration)}
+                    onValueChange={(v) => setSelectedDuration(Number(v))}
                   >
-                    <X className="h-4 w-4 text-gray-600" />
-                  </button>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-14 gap-3">
-                  <div
-                    className="w-16 h-16 rounded-2xl flex items-center justify-center"
-                    style={{ backgroundColor: "#EBF8F7" }}
-                  >
-                    <Upload className="h-7 w-7" style={{ color: "#4ECDC4" }} />
-                  </div>
-                  <p className="font-semibold" style={{ color: "#1A202C" }}>
-                    Drop your room photo here
-                  </p>
-                  <p className="text-sm" style={{ color: "#718096" }}>
-                    or click to browse · JPG, PNG, WEBP up to 20MB
-                  </p>
-                </div>
-              )}
-            </label>
-          </section>
-
-          {/* Custom Instructions */}
-          <section>
-            <h2
-              className="text-base font-semibold mb-2"
-              style={{ color: "#1A202C" }}
-            >
-              Custom Instructions{" "}
-              <span
-                className="font-normal text-sm"
-                style={{ color: "#718096" }}
-              >
-                (optional)
-              </span>
-            </h2>
-            <Textarea
-              placeholder="e.g. Use warm earth tones, add a bookshelf, keep the fireplace..."
-              value={customInstructions}
-              onChange={(e) => setCustomInstructions(e.target.value)}
-              className="resize-none bg-white"
-              rows={3}
-              style={{ borderColor: "#CBD5E0" }}
-              data-ocid="design.instructions.textarea"
-            />
-          </section>
-
-          {/* Generate Button */}
-          <Button
-            onClick={handleGenerate}
-            disabled={isGenerating || !uploadedFile}
-            size="lg"
-            className="w-full py-6 text-base font-semibold rounded-xl transition-all"
-            style={{
-              background:
-                isGenerating || !uploadedFile
-                  ? "#CBD5E0"
-                  : "linear-gradient(135deg, #4ECDC4, #2D9B94)",
-              color: isGenerating || !uploadedFile ? "#718096" : "#0F0F1A",
-              border: "none",
-            }}
-            data-ocid="design.generate.primary_button"
-          >
-            {isGenerating ? (
-              <>
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                Generating Design...
-              </>
-            ) : (
-              <>
-                <Wand2 className="mr-2 h-5 w-5" />
-                Generate Design
-                {selectedStyle ? ` · ${selectedStyle}` : " · No Style"}
-              </>
-            )}
-          </Button>
-
-          {/* Progress Bar */}
-          <AnimatePresence>
-            {(isGenerating || isRefining) && (
-              <motion.div
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                className="rounded-xl p-5 bg-white shadow-sm"
-                style={{ border: "1px solid #E2E8F0" }}
-                data-ocid="design.generate.loading_state"
-              >
-                <p
-                  className="text-sm font-medium mb-3"
-                  style={{ color: "#1A202C" }}
-                >
-                  {statusMsg}
-                </p>
-                <Progress value={progress} className="h-2" />
-                <p className="text-xs mt-2" style={{ color: "#718096" }}>
-                  {progress}% complete
-                </p>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Result */}
-          <AnimatePresence>
-            {generatedImageUrl && (
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4 }}
-                className="space-y-4"
-                data-ocid="design.result.success_state"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle
-                      className="h-5 w-5"
-                      style={{ color: "#4ECDC4" }}
-                    />
-                    <p className="font-semibold" style={{ color: "#1A202C" }}>
-                      Design Ready
-                    </p>
-                    <span
-                      className="text-xs font-medium px-2 py-0.5 rounded-full"
-                      style={{ backgroundColor: "#EBF8F7", color: "#2D9B94" }}
+                    <SelectTrigger
+                      className="w-[80px] h-10 text-xs flex-shrink-0"
+                      style={{
+                        backgroundColor: "#FFFFFF",
+                        border: "1px solid #C7D2FE",
+                        color: "#6366F1",
+                      }}
+                      data-ocid="design.video.duration.select"
                     >
-                      Version {iterationCount}
-                    </span>
-                  </div>
-                  <Button
-                    onClick={handleDownload}
-                    size="sm"
-                    variant="outline"
-                    className="gap-2"
-                    style={{ borderColor: "#4ECDC4", color: "#2D9B94" }}
-                    data-ocid="design.download.button"
-                  >
-                    <Download className="h-4 w-4" />
-                    Download
-                  </Button>
-                </div>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent
+                      style={{
+                        backgroundColor: "#FFFFFF",
+                        border: "1px solid #E2E8F0",
+                      }}
+                    >
+                      {DURATION_OPTIONS.map((d) => (
+                        <SelectItem
+                          key={d.value}
+                          value={String(d.value)}
+                          className="text-xs"
+                        >
+                          {d.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
 
-                <div className="rounded-2xl overflow-hidden shadow-md">
-                  <BeforeAfterSlider
-                    beforeSrc={uploadedImageUrl}
-                    afterSrc={generatedImageUrl}
-                  />
-                </div>
-
-                {/* Refine Section */}
-                <div
-                  className="rounded-2xl p-5 bg-white"
-                  style={{ border: "1px solid #E2E8F0" }}
-                >
-                  <h3
-                    className="text-sm font-semibold mb-3"
-                    style={{ color: "#1A202C" }}
+                  {/* Resolution selector */}
+                  <Select
+                    value={selectedResolution}
+                    onValueChange={setSelectedResolution}
                   >
-                    ✏️ Refine This Design
-                  </h3>
-                  <p className="text-xs mb-3" style={{ color: "#718096" }}>
-                    Describe changes to apply on top of the current result
-                    (iterative editing).
-                  </p>
-                  <Textarea
-                    placeholder="e.g. Make it brighter, add a plant in the corner, change the rug to blue..."
-                    value={refinementInstructions}
-                    onChange={(e) => setRefinementInstructions(e.target.value)}
-                    className="resize-none bg-gray-50 mb-3"
-                    rows={2}
-                    style={{ borderColor: "#CBD5E0" }}
-                    data-ocid="design.refine.textarea"
-                  />
-                  <Button
-                    onClick={handleRefine}
-                    disabled={isRefining || !refinementInstructions.trim()}
-                    className="w-full gap-2 font-semibold rounded-xl"
+                    <SelectTrigger
+                      className="w-[110px] h-10 text-xs flex-shrink-0"
+                      style={{
+                        backgroundColor: "#FFFFFF",
+                        border: "1px solid #C7D2FE",
+                        color: "#6366F1",
+                      }}
+                      data-ocid="design.video.resolution.select"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent
+                      style={{
+                        backgroundColor: "#FFFFFF",
+                        border: "1px solid #E2E8F0",
+                      }}
+                    >
+                      {RESOLUTION_OPTIONS.map((r) => (
+                        <SelectItem key={r} value={r} className="text-xs">
+                          {r}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </>
+              ) : (
+                <Select value={selectedRoom} onValueChange={setSelectedRoom}>
+                  <SelectTrigger
+                    className="w-[130px] h-10 text-xs flex-shrink-0"
                     style={{
-                      background:
-                        isRefining || !refinementInstructions.trim()
-                          ? "#CBD5E0"
-                          : "linear-gradient(135deg, #4ECDC4, #2D9B94)",
-                      color:
-                        isRefining || !refinementInstructions.trim()
-                          ? "#718096"
-                          : "#0F0F1A",
-                      border: "none",
+                      backgroundColor: "#FFFFFF",
+                      border: "1px solid #E2E8F0",
+                      color: "#6B7280",
                     }}
-                    data-ocid="design.refine.submit_button"
+                    data-ocid="design.room.select"
                   >
-                    {isRefining ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" /> Refining...
-                      </>
-                    ) : (
-                      <>
-                        <RefreshCw className="h-4 w-4" /> Refine Design
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent
+                    style={{
+                      backgroundColor: "#FFFFFF",
+                      border: "1px solid #E2E8F0",
+                    }}
+                  >
+                    {ROOM_TYPES.map((r) => (
+                      <SelectItem
+                        key={r}
+                        value={r}
+                        className="text-xs"
+                        style={{ color: "#111827" }}
+                      >
+                        {r}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
 
-          {/* Empty State */}
-          {!generatedImageUrl && !isGenerating && !isRefining && (
-            <div
-              className="rounded-2xl flex flex-col items-center justify-center bg-white"
-              style={{ border: "1px solid #E2E8F0", minHeight: 280 }}
-              data-ocid="design.result.empty_state"
-            >
-              <div
-                className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
-                style={{ backgroundColor: "#F7F8FA" }}
+              <button
+                type="button"
+                onClick={handleSend}
+                disabled={
+                  !uploadedImageUrl ||
+                  isGenerating ||
+                  (isVideoMode && !uploadedFile)
+                }
+                className="flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-xl transition-all disabled:opacity-40"
+                style={{
+                  background:
+                    !uploadedImageUrl || isGenerating
+                      ? "#E5E7EB"
+                      : isVideoMode
+                        ? "linear-gradient(135deg, #6366F1, #4F46E5)"
+                        : "linear-gradient(135deg, #4ECDC4, #2D9B94)",
+                }}
+                data-ocid="design.generate.primary_button"
               >
-                <Wand2 className="h-8 w-8" style={{ color: "#CBD5E0" }} />
-              </div>
-              <p className="font-medium" style={{ color: "#718096" }}>
-                Your design will appear here
-              </p>
-              <p className="text-sm mt-1" style={{ color: "#CBD5E0" }}>
-                Upload a photo and click Generate
-              </p>
+                {isGenerating ? (
+                  <Loader2
+                    className="h-4 w-4 animate-spin"
+                    style={{ color: isVideoMode ? "#6366F1" : "#4ECDC4" }}
+                  />
+                ) : isVideoMode ? (
+                  <Clapperboard
+                    className="h-4 w-4"
+                    style={{ color: uploadedImageUrl ? "#FFFFFF" : "#9CA3AF" }}
+                  />
+                ) : (
+                  <Wand2
+                    className="h-4 w-4"
+                    style={{ color: uploadedImageUrl ? "#FFFFFF" : "#9CA3AF" }}
+                  />
+                )}
+              </button>
             </div>
-          )}
+
+            <p
+              className="text-center text-xs pb-2"
+              style={{ color: "#9CA3AF" }}
+            >
+              © {year}. Built with ❤️ using{" "}
+              <a
+                href={caffeineHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:opacity-80"
+                style={{ color: "#4ECDC4" }}
+              >
+                caffeine.ai
+              </a>
+            </p>
+          </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }
