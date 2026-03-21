@@ -10,11 +10,10 @@ export default function App() {
 
   return (
     <>
-      {view === "landing" ? (
+      {view === "landing" && (
         <LandingPage onGetStarted={() => setView("design")} />
-      ) : (
-        <DesignTool onBack={() => setView("landing")} />
       )}
+      {view === "design" && <DesignTool onBack={() => setView("landing")} />}
       <Toaster />
     </>
   );

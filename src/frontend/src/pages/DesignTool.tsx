@@ -1,7 +1,14 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Progress } from "@/components/ui/progress";
+
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
@@ -111,6 +118,7 @@ interface Tool {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   beta?: boolean;
+  modifiesFurniture?: boolean;
   prompt: (roomType: string) => string;
 }
 
@@ -125,6 +133,7 @@ const TOOL_GROUPS: ToolGroup[] = [
     tools: [
       {
         id: "ADD_FURNITURE",
+        modifiesFurniture: true,
         label: "Add Furniture",
         icon: Sofa,
         prompt: (roomType) =>
@@ -132,6 +141,7 @@ const TOOL_GROUPS: ToolGroup[] = [
       },
       {
         id: "FURNITURE_ERASER",
+        modifiesFurniture: true,
         label: "Furniture Eraser",
         icon: Eraser,
         prompt: (roomType) =>
@@ -139,6 +149,7 @@ const TOOL_GROUPS: ToolGroup[] = [
       },
       {
         id: "ROOM_DECLUTTERING",
+        modifiesFurniture: true,
         label: "Room Decluttering",
         icon: Sparkles,
         prompt: (roomType) =>
@@ -160,6 +171,7 @@ const TOOL_GROUPS: ToolGroup[] = [
       },
       {
         id: "AI_DESIGN_AGENT",
+        modifiesFurniture: true,
         label: "AI Design Agent",
         icon: Bot,
         prompt: (roomType) =>
@@ -167,6 +179,7 @@ const TOOL_GROUPS: ToolGroup[] = [
       },
       {
         id: "MULTI_ANGLE_STAGING",
+        modifiesFurniture: true,
         label: "Multi-Angle Staging",
         icon: LayoutGrid,
         prompt: (roomType) =>
@@ -214,6 +227,7 @@ const TOOL_GROUPS: ToolGroup[] = [
       },
       {
         id: "HOLIDAY_CARD",
+        modifiesFurniture: true,
         label: "AI Holiday Card",
         icon: Gift,
         prompt: () =>
@@ -526,7 +540,6 @@ export default function DesignTool({ onBack }: DesignToolProps) {
       return;
     }
     if (isGenerating) return;
-
     const instructions = inputText.trim();
 
     if (refineTargetId) {
@@ -575,8 +588,11 @@ export default function DesignTool({ onBack }: DesignToolProps) {
         const strictConstraints = instructions
           ? `STRICT INSTRUCTIONS (you MUST follow these exactly): ${instructions}. `
           : "";
+        const preservationConstraint = activeTool.modifiesFurniture
+          ? ""
+          : "IMPORTANT: Do NOT add, remove, or change any furniture or decor items. Preserve all existing furniture exactly as-is. ";
         const basePrompt = activeTool.prompt(selectedRoom);
-        const prompt = `${strictConstraints}${basePrompt}`;
+        const prompt = `${strictConstraints}${preservationConstraint}${basePrompt}`;
         const imageElement = await puter.ai.txt2img(prompt, {
           model: "black-forest-labs/flux.1-kontext-pro",
           image_url: uploadedImageUrl,
@@ -1278,7 +1294,12 @@ export default function DesignTool({ onBack }: DesignToolProps) {
                           </span>
                         )}
                       </div>
-                      <Progress value={progress} className="h-1.5" />
+                      <div className="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-teal-400 rounded-full transition-all duration-300"
+                          style={{ width: `${progress}%` }}
+                        />
+                      </div>
                       <p className="text-xs mt-2" style={{ color: "#9CA3AF" }}>
                         {Math.round(progress)}% complete
                       </p>

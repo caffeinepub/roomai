@@ -52,7 +52,7 @@ const FEATURES = [
   },
 ];
 
-const FOOTER_PRODUCT = ["Design Tool", "Inspiration Gallery", "Pricing", "API"];
+const FOOTER_PRODUCT = ["Design Tool", "Inspiration Gallery", "API"];
 const FOOTER_COMPANY = ["About", "Blog", "Careers", "Contact"];
 const FOOTER_LEGAL = ["Privacy Policy", "Terms of Service", "Cookie Policy"];
 const STARS = [1, 2, 3, 4, 5];
@@ -87,7 +87,7 @@ export default function LandingPage({ onGetStarted }: LandingPageProps) {
           </div>
 
           <nav className="hidden md:flex items-center gap-8">
-            {(["Design", "Inspiration", "Pricing"] as const).map((link) => (
+            {(["Design", "Inspiration"] as const).map((link) => (
               <button
                 key={link}
                 type="button"
@@ -423,10 +423,10 @@ export default function LandingPage({ onGetStarted }: LandingPageProps) {
                       className="text-sm font-semibold"
                       style={{ color: "#111111" }}
                     >
-                      "Completely transformed my bedroom!"
+                      &ldquo;Completely transformed my bedroom!&rdquo;
                     </p>
                     <p className="text-xs mt-1" style={{ color: "#6F6F6F" }}>
-                      Sarah K. — Dark navy & gold luxury redesign
+                      Sarah K. — Dark navy &amp; gold luxury redesign
                     </p>
                   </div>
                 </div>
@@ -456,7 +456,7 @@ export default function LandingPage({ onGetStarted }: LandingPageProps) {
                       className="text-sm font-semibold"
                       style={{ color: "#111111" }}
                     >
-                      "The kitchen industrial look is perfect!"
+                      &ldquo;The kitchen industrial look is perfect!&rdquo;
                     </p>
                     <p className="text-xs mt-1" style={{ color: "#6F6F6F" }}>
                       Marcus T. — Industrial loft kitchen redesign
@@ -512,7 +512,7 @@ export default function LandingPage({ onGetStarted }: LandingPageProps) {
               style={{ backgroundColor: "#6F9D79", color: "#F7F7F5" }}
               data-ocid="cta.start.primary_button"
             >
-              Start Designing Now — It&apos;s Free
+              Start Designing Now &mdash; It&apos;s Free
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
           </motion.div>
@@ -617,7 +617,7 @@ export default function LandingPage({ onGetStarted }: LandingPageProps) {
             style={{ borderColor: "rgba(255,255,255,0.1)" }}
           >
             <p className="text-sm" style={{ color: "#9AB" }}>
-              © {year}. Built with ❤️ using{" "}
+              &copy; {year}. Built with &hearts; using{" "}
               <a
                 href={caffeineHref}
                 className="underline hover:opacity-80"

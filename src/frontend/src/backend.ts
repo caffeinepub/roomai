@@ -100,6 +100,7 @@ export interface backendInterface {
     getAllDesigns(): Promise<Array<Design>>;
     getDesignHistorySorted(): Promise<Array<Design>>;
     getDesignsByRoomType(roomType: string): Promise<Array<Design>>;
+    _initializeAccessControlWithSecret(secret: string): Promise<void>;
 }
 export class Backend implements backendInterface {
     constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never){}
@@ -158,6 +159,9 @@ export class Backend implements backendInterface {
             const result = await this.actor.getDesignsByRoomType(arg0);
             return result;
         }
+    }
+    async _initializeAccessControlWithSecret(arg0: string): Promise<void> {
+        return (this.actor as any)._initializeAccessControlWithSecret(arg0);
     }
 }
 export interface CreateActorOptions {

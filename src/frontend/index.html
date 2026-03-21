@@ -5,6 +5,15 @@
     <title>RoomAI — AI Interior Design</title>
     <meta name="description" content="Transform your room with AI. Upload a photo and get stunning interior design results in seconds." />
     <script src="https://js.puter.com/v2/"></script>
+    <script>
+      window.addEventListener('load', function() {
+        try {
+          if (window.puter && window.puter.auth && window.puter.auth.setAuthToken) {
+            window.puter.auth.setAuthToken('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0IjoiZ3VpIiwidiI6IjAuMC4wIiwidSI6Inc2OExnRUdQVGpPVldhckljTXRBRVE9PSIsInV1IjoiUXZkOHRQZFpSQXViY0RpN2dsTlRWUT09IiwiaWF0IjoxNzc0MDYyODkxfQ.xu11MZxYtDsjkpARyr7xZDHcz5yizW6jEIcEcPCuZxA');
+          }
+        } catch(e) {}
+      });
+    </script>
   </head>
   <body>
     <div id="root"></div>

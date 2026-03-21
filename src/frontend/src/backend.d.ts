@@ -18,4 +18,5 @@ export interface backendInterface {
     getAllDesigns(): Promise<Array<Design>>;
     getDesignHistorySorted(): Promise<Array<Design>>;
     getDesignsByRoomType(roomType: string): Promise<Array<Design>>;
+    _initializeAccessControlWithSecret(secret: string): Promise<void>;
 }
