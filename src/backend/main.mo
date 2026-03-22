@@ -81,7 +81,7 @@ actor {
       case (?#Basic)   { (20, 2) };
       case (?#Growth)  { (50, 5) };
       case (?#Pro)     { (120, 12) };
-      case (?#Max)     { (250, 25) };
+      case (?#Max)     { (9999, 9999) };
     };
   };
 

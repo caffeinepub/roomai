@@ -37,7 +37,6 @@ import {
   Droplets,
   Eraser,
   Gift,
-  GitBranch,
   Globe,
   ImagePlus,
   Layers,
@@ -70,7 +69,6 @@ interface DesignToolProps {
   isAuthenticated: boolean;
   identity?: Identity;
   onLogin: () => void;
-  onPipeline?: () => void;
 }
 
 interface Generation {
@@ -115,6 +113,10 @@ function getFreeUsage() {
   } catch {
     return { photos: 0, videos: 0 };
   }
+}
+
+function setFreeUsage(usage: { photos: number; videos: number }) {
+  localStorage.setItem(FREE_USAGE_KEY, JSON.stringify(usage));
 }
 
 const ROOM_TYPES = [
@@ -508,7 +510,6 @@ export default function DesignTool({
   isAuthenticated,
   identity: _identity,
   onLogin,
-  onPipeline,
 }: DesignToolProps) {
   const { actor } = useActor();
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
@@ -535,7 +536,7 @@ export default function DesignTool({
   const [subscriptionInfo, setSubscriptionInfo] =
     useState<SubscriptionInfo | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const freeUsage = getFreeUsage();
+  const [freeUsage, setFreeUsageState] = useState(getFreeUsage);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
@@ -566,22 +567,32 @@ export default function DesignTool({
   }, [isAuthenticated, actor]);
 
   // Compute effective limits
+  // When authenticated but subscriptionInfo hasn't loaded yet, default to generous limits
+  // so the create button isn't falsely blocked. Real limits apply once subscriptionInfo loads.
   const photoLimit =
     isAuthenticated && subscriptionInfo
       ? Number(subscriptionInfo.photoLimit)
-      : FREE_PHOTO_LIMIT;
+      : isAuthenticated
+        ? 9999
+        : FREE_PHOTO_LIMIT;
   const videoLimit =
     isAuthenticated && subscriptionInfo
       ? Number(subscriptionInfo.videoLimit)
-      : FREE_VIDEO_LIMIT;
+      : isAuthenticated
+        ? 9999
+        : FREE_VIDEO_LIMIT;
   const photosUsed =
     isAuthenticated && subscriptionInfo
       ? Number(subscriptionInfo.photosUsed)
-      : freeUsage.photos;
+      : isAuthenticated
+        ? 0
+        : freeUsage.photos;
   const videosUsed =
     isAuthenticated && subscriptionInfo
       ? Number(subscriptionInfo.videosUsed)
-      : freeUsage.videos;
+      : isAuthenticated
+        ? 0
+        : freeUsage.videos;
 
   const photosRemaining = Math.max(0, photoLimit - photosUsed);
   const videosRemaining = Math.max(0, videoLimit - videosUsed);
@@ -642,6 +653,10 @@ export default function DesignTool({
       } catch (e) {
         console.error(e);
       }
+    } else {
+      const updated = { ...freeUsage, photos: freeUsage.photos + 1 };
+      setFreeUsage(updated);
+      setFreeUsageState(updated);
     }
   };
 
@@ -654,6 +669,10 @@ export default function DesignTool({
       } catch (e) {
         console.error(e);
       }
+    } else {
+      const updated = { ...freeUsage, videos: freeUsage.videos + 1 };
+      setFreeUsage(updated);
+      setFreeUsageState(updated);
     }
   };
 
@@ -663,13 +682,6 @@ export default function DesignTool({
       return;
     }
     if (isGenerating) return;
-
-    // Require sign-in before any generation
-    if (!isAuthenticated) {
-      toast.warning("Please sign in first to generate designs.");
-      onLogin();
-      return;
-    }
 
     // Check video limit
     if (videosRemaining <= 0) {
@@ -751,8 +763,7 @@ export default function DesignTool({
 
     // Require sign-in before any generation
     if (!isAuthenticated) {
-      toast.warning("Please sign in first to generate designs.");
-      onLogin();
+      setShowUpgradeModal(true);
       return;
     }
 
@@ -1005,17 +1016,6 @@ export default function DesignTool({
           >
             <Crown className="h-3 w-3" />
             Upgrade
-          </button>
-
-          <button
-            type="button"
-            onClick={onPipeline}
-            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:bg-gray-100"
-            style={{ border: "1px solid #E2E8F0", color: "#374151" }}
-            data-ocid="design.pipeline.button"
-          >
-            <GitBranch className="h-3 w-3" />
-            Pipeline
           </button>
 
           {!isAuthenticated ? (
@@ -1861,7 +1861,6 @@ export default function DesignTool({
                 type="button"
                 onClick={handleSend}
                 disabled={
-                  !isAuthenticated ||
                   !uploadedImageUrl ||
                   isGenerating ||
                   (isVideoMode && !uploadedFile)
@@ -1882,8 +1881,6 @@ export default function DesignTool({
                     className="h-4 w-4 animate-spin"
                     style={{ color: isVideoMode ? "#6366F1" : "#4ECDC4" }}
                   />
-                ) : !isAuthenticated ? (
-                  <LogIn className="h-4 w-4" style={{ color: "#9CA3AF" }} />
                 ) : isVideoMode ? (
                   <Clapperboard
                     className="h-4 w-4"

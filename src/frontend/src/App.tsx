@@ -5,22 +5,14 @@ import { useActor } from "./hooks/useActor";
 import { useInternetIdentity } from "./hooks/useInternetIdentity";
 import DesignTool from "./pages/DesignTool";
 import LandingPage from "./pages/LandingPage";
-import PipelinePage from "./pages/PipelinePage";
 import PricingPage from "./pages/PricingPage";
 
-export type AppView = "landing" | "design" | "pricing" | "pipeline";
+export type AppView = "landing" | "design" | "pricing";
 
 function LoginGate({
   onLogin,
   isInitializing,
-  loginStatus,
-  isLoginError,
-}: {
-  onLogin: () => void;
-  isInitializing: boolean;
-  loginStatus: string;
-  isLoginError: boolean;
-}) {
+}: { onLogin: () => void; isInitializing: boolean }) {
   return (
     <div className="min-h-screen bg-white flex items-center justify-center">
       <div className="text-center max-w-md px-6">
@@ -44,21 +36,9 @@ function LoginGate({
             data-ocid="login.submit_button"
             className="w-full bg-black text-white rounded-xl py-3 px-6 font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isInitializing
-              ? "Loading..."
-              : loginStatus === "logging-in"
-                ? "Opening sign-in..."
-                : "Sign in with Internet Identity"}
+            {isInitializing ? "Loading..." : "Sign in with Internet Identity"}
           </button>
-          {isLoginError && (
-            <p className="text-xs text-red-500 mt-3">
-              Sign-in failed. Please try again.
-            </p>
-          )}
-          <p className="text-xs text-gray-400 mt-3">
-            If nothing opens, check that pop-ups are allowed for this site.
-          </p>
-          <p className="text-xs text-gray-400 mt-1">
+          <p className="text-xs text-gray-400 mt-4">
             Secure, decentralized login — no password needed.
           </p>
         </div>
@@ -69,8 +49,7 @@ function LoginGate({
 
 export default function App() {
   const [view, setView] = useState<AppView>("landing");
-  const { identity, login, clear, isInitializing, loginStatus, isLoginError } =
-    useInternetIdentity();
+  const { identity, login, clear, isInitializing } = useInternetIdentity();
   const isAuthenticated = !!identity && !identity.getPrincipal().isAnonymous();
   const { actor } = useActor();
 
@@ -133,15 +112,7 @@ export default function App() {
   if (!isAuthenticated) {
     return (
       <>
-        <LoginGate
-          onLogin={login}
-          isInitializing={isInitializing}
-          loginStatus={loginStatus}
-          isLoginError={isLoginError}
-        />
-        {view === "pipeline" && (
-          <PipelinePage onBack={() => setView("design")} />
-        )}
+        <LoginGate onLogin={login} isInitializing={isInitializing} />
         <Toaster />
       </>
     );
@@ -166,7 +137,6 @@ export default function App() {
           isAuthenticated={isAuthenticated}
           identity={identity}
           onLogin={login}
-          onPipeline={() => setView("pipeline")}
         />
       )}
       {view === "pricing" && (
@@ -177,7 +147,6 @@ export default function App() {
           identity={identity}
         />
       )}
-      {view === "pipeline" && <PipelinePage onBack={() => setView("design")} />}
       <Toaster />
     </>
   );

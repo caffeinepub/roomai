@@ -82,14 +82,14 @@ const PLANS = [
     id: "max",
     name: "Max",
     price: 9999,
-    photos: 250,
-    videos: 25,
+    photos: 9999,
+    videos: 9999,
     color: "#EC4899",
     bg: "#FCE7F3",
     razorpayLink: "https://rzp.io/rzp/OfYF5yMg",
     features: [
-      "250 photo transformations/month",
-      "25 video generations/month",
+      "9999 photo transformations/month",
+      "9999 video generations/month",
       "All design tools",
       "Ultra HD quality",
       "Priority processing",
@@ -245,13 +245,14 @@ export default function PricingPage({
                   className="text-xs px-2 py-1 rounded-full font-medium"
                   style={{ backgroundColor: plan.bg, color: plan.color }}
                 >
-                  {plan.photos} photos
+                  {plan.photos.toLocaleString()} photos
                 </span>
                 <span
                   className="text-xs px-2 py-1 rounded-full font-medium"
                   style={{ backgroundColor: plan.bg, color: plan.color }}
                 >
-                  {plan.videos} video{plan.videos > 1 ? "s" : ""}
+                  {plan.videos.toLocaleString()} video
+                  {plan.videos > 1 ? "s" : ""}
                 </span>
               </div>
 
