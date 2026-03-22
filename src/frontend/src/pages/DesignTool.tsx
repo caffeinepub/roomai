@@ -24,6 +24,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import type { Identity } from "@icp-sdk/core/agent";
 import {
   ArrowLeft,
   Bot,
@@ -31,16 +32,19 @@ import {
   Clapperboard,
   Clock,
   CloudSun,
+  Crown,
   Download,
   Droplets,
   Eraser,
   Gift,
+  GitBranch,
   Globe,
   ImagePlus,
   Layers,
   LayoutGrid,
   Leaf,
   Loader2,
+  LogIn,
   Menu,
   Moon,
   Sofa,
@@ -52,14 +56,21 @@ import {
   Wand2,
   Waves,
   X,
+  Zap,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import BeforeAfterSlider from "../components/BeforeAfterSlider";
+import { useActor } from "../hooks/useActor";
 
 interface DesignToolProps {
   onBack: () => void;
+  onUpgrade: () => void;
+  isAuthenticated: boolean;
+  identity?: Identity;
+  onLogin: () => void;
+  onPipeline?: () => void;
 }
 
 interface Generation {
@@ -68,6 +79,7 @@ interface Generation {
   generatedImageUrl: string;
   tool: string;
   roomType: string;
+  style: string;
   instructions: string;
   version: number;
   timestamp: Date;
@@ -83,6 +95,28 @@ interface VideoGeneration {
   timestamp: Date;
 }
 
+interface SubscriptionInfo {
+  photosUsed: bigint;
+  plan: string;
+  videoLimit: bigint;
+  videosUsed: bigint;
+  photoLimit: bigint;
+}
+
+const FREE_PHOTO_LIMIT = 1;
+const FREE_VIDEO_LIMIT = 0;
+const FREE_USAGE_KEY = "roomai_free_usage";
+
+function getFreeUsage() {
+  try {
+    const raw = localStorage.getItem(FREE_USAGE_KEY);
+    if (!raw) return { photos: 0, videos: 0 };
+    return JSON.parse(raw) as { photos: number; videos: number };
+  } catch {
+    return { photos: 0, videos: 0 };
+  }
+}
+
 const ROOM_TYPES = [
   "Living Room",
   "Bedroom",
@@ -92,7 +126,25 @@ const ROOM_TYPES = [
   "Dining Room",
 ];
 
+const DESIGN_STYLES = [
+  "Modern",
+  "Scandinavian",
+  "Industrial",
+  "Bohemian",
+  "Minimalist",
+  "Traditional",
+  "Contemporary",
+  "Rustic",
+  "Mid-Century",
+  "Coastal",
+  "Japandi",
+  "Art Deco",
+  "Farmhouse",
+  "Mediterranean",
+];
+
 type ToolId =
+  | "NONE_INTERIOR"
   | "ADD_FURNITURE"
   | "FURNITURE_ERASER"
   | "ROOM_DECLUTTERING"
@@ -119,7 +171,7 @@ interface Tool {
   icon: React.ComponentType<{ className?: string }>;
   beta?: boolean;
   modifiesFurniture?: boolean;
-  prompt: (roomType: string) => string;
+  prompt: (roomType: string, style: string) => string;
 }
 
 interface ToolGroup {
@@ -132,12 +184,20 @@ const TOOL_GROUPS: ToolGroup[] = [
     label: "Interior Design",
     tools: [
       {
+        id: "NONE_INTERIOR",
+        modifiesFurniture: false,
+        label: "None",
+        icon: LayoutGrid,
+        prompt: (roomType, style) =>
+          `Enhance and beautify this ${roomType || "room"}${style ? ` in ${style} style` : ""}. Preserve all existing furniture and structural elements unless a style is specified.`,
+      },
+      {
         id: "ADD_FURNITURE",
         modifiesFurniture: true,
         label: "Add Furniture",
         icon: Sofa,
-        prompt: (roomType) =>
-          `Add tasteful, well-placed furniture to this ${roomType} that suits the space. Do not change walls, floors, windows or structural elements.`,
+        prompt: (roomType, style) =>
+          `Add tasteful, well-placed furniture to this ${roomType || "room"}${style ? ` in ${style} style` : ""}. Do not change walls, floors, windows or structural elements.`,
       },
       {
         id: "FURNITURE_ERASER",
@@ -145,7 +205,7 @@ const TOOL_GROUPS: ToolGroup[] = [
         label: "Furniture Eraser",
         icon: Eraser,
         prompt: (roomType) =>
-          `Remove all furniture from this ${roomType}, leaving only the walls, floors, windows, and structural elements. Make it look clean and empty.`,
+          `Remove all furniture from this ${roomType || "room"}, leaving only the walls, floors, windows, and structural elements. Make it look clean and empty.`,
       },
       {
         id: "ROOM_DECLUTTERING",
@@ -153,37 +213,37 @@ const TOOL_GROUPS: ToolGroup[] = [
         label: "Room Decluttering",
         icon: Sparkles,
         prompt: (roomType) =>
-          `Declutter and organize this ${roomType}. Remove unnecessary items, tidy up surfaces, keep the essential furniture.`,
+          `Declutter and organize this ${roomType || "room"}. Remove unnecessary items, tidy up surfaces, keep the essential furniture.`,
       },
       {
         id: "ENHANCE_PHOTO_QUALITY",
         label: "Enhance Photo Quality",
         icon: Wand2,
         prompt: (roomType) =>
-          `Enhance the photo quality of this ${roomType} image. Improve lighting, sharpness, color balance and overall visual quality without changing any design elements.`,
+          `Enhance the photo quality of this ${roomType || "room"} image. Improve lighting, sharpness, color balance and overall visual quality without changing any design elements.`,
       },
       {
         id: "MATERIAL_OVERLAY",
         label: "Material Overlay",
         icon: Layers,
-        prompt: (roomType) =>
-          `Apply a premium material overlay to the surfaces in this ${roomType}. Update wall textures, floor materials, and finishes to look high-end.`,
+        prompt: (roomType, style) =>
+          `Apply a premium material overlay to the surfaces in this ${roomType || "room"}${style ? ` with a ${style} aesthetic` : ""}. Update wall textures, floor materials, and finishes to look high-end.`,
       },
       {
         id: "AI_DESIGN_AGENT",
         modifiesFurniture: true,
         label: "AI Design Agent",
         icon: Bot,
-        prompt: (roomType) =>
-          `Act as an expert interior design agent. Comprehensively redesign this ${roomType} with the best design choices for the space, optimizing layout, furniture, colors and lighting.`,
+        prompt: (roomType, style) =>
+          `Act as an expert interior design agent. Comprehensively redesign this ${roomType || "room"}${style ? ` in ${style} style` : ""} with the best design choices for the space, optimizing layout, furniture, colors and lighting.`,
       },
       {
         id: "MULTI_ANGLE_STAGING",
         modifiesFurniture: true,
         label: "Multi-Angle Staging",
         icon: LayoutGrid,
-        prompt: (roomType) =>
-          `Stage this ${roomType} for real estate with professional interior design. Add furniture, decor and lighting that would appeal to potential buyers.`,
+        prompt: (roomType, style) =>
+          `Stage this ${roomType || "room"}${style ? ` in ${style} style` : ""} for real estate with professional interior design. Add furniture, decor and lighting that would appeal to potential buyers.`,
       },
     ],
   },
@@ -259,21 +319,6 @@ const TOOL_GROUPS: ToolGroup[] = [
         prompt: () =>
           "Add realistic, crystal-clear water to this empty pool. Make it look inviting and properly filled. Keep surrounding area unchanged.",
       },
-      {
-        id: "AI_VIRTUAL_TOUR",
-        label: "AI Virtual Tour",
-        icon: Video,
-        prompt: (roomType) =>
-          `Create a virtual tour-ready version of this ${roomType} with professional staging, perfect lighting, and polished presentation suitable for a real estate listing.`,
-      },
-      {
-        id: "AI_360_PANORAMA",
-        label: "AI 360° Panorama",
-        icon: Globe,
-        beta: true,
-        prompt: () =>
-          "Enhance this image for a 360° panoramic virtual tour. Improve lighting, color balance, and visual quality for an immersive panoramic presentation.",
-      },
     ],
   },
   {
@@ -285,6 +330,21 @@ const TOOL_GROUPS: ToolGroup[] = [
         icon: Clapperboard,
         prompt: () =>
           "Animate this room with smooth, cinematic camera movement.",
+      },
+      {
+        id: "AI_VIRTUAL_TOUR",
+        label: "AI Virtual Tour",
+        icon: Video,
+        prompt: (roomType) =>
+          `Smooth cinematic walkthrough of this ${roomType || "room"}, professional virtual tour style.`,
+      },
+      {
+        id: "AI_360_PANORAMA",
+        label: "AI 360° Panorama",
+        icon: Globe,
+        beta: true,
+        prompt: () =>
+          "360-degree panoramic sweep of this room with smooth rotation.",
       },
     ],
   },
@@ -319,13 +379,66 @@ const RESOLUTION_OPTIONS = ["1280x720", "720x1280", "1024x1024"];
 function SidebarContent({
   selectedTool,
   onSelect,
+  selectedStyle,
+  onStyleSelect,
 }: {
   selectedTool: ToolId;
   onSelect: (id: ToolId) => void;
+  selectedStyle: string | null;
+  onStyleSelect: (style: string | null) => void;
 }) {
   return (
     <ScrollArea className="h-full">
       <div className="py-3 pb-8">
+        {/* Design Styles */}
+        <div className="mb-2">
+          <p
+            className="px-3 py-2 text-xs font-semibold uppercase tracking-wider"
+            style={{ color: "#9CA3AF" }}
+          >
+            Design Style
+          </p>
+          <div className="px-3 flex flex-wrap gap-1.5 pb-2">
+            <button
+              type="button"
+              onClick={() => onStyleSelect(null)}
+              className="px-2.5 py-1 rounded-full text-xs font-medium transition-all"
+              style={{
+                backgroundColor: selectedStyle === null ? "#4ECDC4" : "#F3F4F6",
+                color: selectedStyle === null ? "#FFFFFF" : "#6B7280",
+                border:
+                  selectedStyle === null
+                    ? "1px solid #4ECDC4"
+                    : "1px solid #E2E8F0",
+              }}
+            >
+              No Style
+            </button>
+            {DESIGN_STYLES.map((style) => (
+              <button
+                key={style}
+                type="button"
+                onClick={() =>
+                  onStyleSelect(selectedStyle === style ? null : style)
+                }
+                className="px-2.5 py-1 rounded-full text-xs font-medium transition-all"
+                style={{
+                  backgroundColor:
+                    selectedStyle === style ? "#4ECDC4" : "#F3F4F6",
+                  color: selectedStyle === style ? "#FFFFFF" : "#374151",
+                  border:
+                    selectedStyle === style
+                      ? "1px solid #4ECDC4"
+                      : "1px solid #E2E8F0",
+                }}
+              >
+                {style}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Tools */}
         {TOOL_GROUPS.map((group) => (
           <div key={group.label} className="mb-2">
             <p
@@ -389,11 +502,20 @@ function SidebarContent({
   );
 }
 
-export default function DesignTool({ onBack }: DesignToolProps) {
+export default function DesignTool({
+  onBack,
+  onUpgrade,
+  isAuthenticated,
+  identity: _identity,
+  onLogin,
+  onPipeline,
+}: DesignToolProps) {
+  const { actor } = useActor();
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string>("");
-  const [selectedRoom, setSelectedRoom] = useState("Living Room");
-  const [selectedTool, setSelectedTool] = useState<ToolId>("ADD_FURNITURE");
+  const [selectedRoom, setSelectedRoom] = useState("");
+  const [selectedStyle, setSelectedStyle] = useState<string | null>(null);
+  const [selectedTool, setSelectedTool] = useState<ToolId>("NONE_INTERIOR");
   const [inputText, setInputText] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -410,6 +532,10 @@ export default function DesignTool({ onBack }: DesignToolProps) {
   const [selectedDuration, setSelectedDuration] = useState(4);
   const [selectedResolution, setSelectedResolution] = useState("1280x720");
   const [historyTab, setHistoryTab] = useState<"images" | "videos">("images");
+  const [subscriptionInfo, setSubscriptionInfo] =
+    useState<SubscriptionInfo | null>(null);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const freeUsage = getFreeUsage();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
@@ -420,9 +546,45 @@ export default function DesignTool({ onBack }: DesignToolProps) {
 
   const activeTool =
     ALL_TOOLS.find((t) => t.id === selectedTool) ?? ALL_TOOLS[0];
-  const isVideoMode = selectedTool === "IMAGE_TO_VIDEO";
+  const isVideoMode =
+    selectedTool === "IMAGE_TO_VIDEO" ||
+    selectedTool === "AI_VIRTUAL_TOUR" ||
+    selectedTool === "AI_360_PANORAMA";
 
   const totalCount = generations.length + videoGenerations.length;
+
+  // Load subscription info when authenticated
+  useEffect(() => {
+    if (isAuthenticated && actor) {
+      (actor as any)
+        .getMySubscription()
+        .then((info: SubscriptionInfo) => {
+          setSubscriptionInfo(info);
+        })
+        .catch(console.error);
+    }
+  }, [isAuthenticated, actor]);
+
+  // Compute effective limits
+  const photoLimit =
+    isAuthenticated && subscriptionInfo
+      ? Number(subscriptionInfo.photoLimit)
+      : FREE_PHOTO_LIMIT;
+  const videoLimit =
+    isAuthenticated && subscriptionInfo
+      ? Number(subscriptionInfo.videoLimit)
+      : FREE_VIDEO_LIMIT;
+  const photosUsed =
+    isAuthenticated && subscriptionInfo
+      ? Number(subscriptionInfo.photosUsed)
+      : freeUsage.photos;
+  const videosUsed =
+    isAuthenticated && subscriptionInfo
+      ? Number(subscriptionInfo.videosUsed)
+      : freeUsage.videos;
+
+  const photosRemaining = Math.max(0, photoLimit - photosUsed);
+  const videosRemaining = Math.max(0, videoLimit - videosUsed);
 
   useEffect(() => {
     if (totalCount > 0) {
@@ -452,7 +614,6 @@ export default function DesignTool({ onBack }: DesignToolProps) {
     let msgIndex = 0;
     setStatusMsg(messages[0]);
     setProgress(0);
-    // Video progress is slower (can take 1-2 min)
     const increment = isVideo ? 0.5 : 2;
     const interval = isVideo ? 800 : 600;
     progressIntervalRef.current = setInterval(() => {
@@ -472,6 +633,30 @@ export default function DesignTool({ onBack }: DesignToolProps) {
     if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
   };
 
+  const recordPhotoUsageLocal = async () => {
+    if (isAuthenticated && actor) {
+      try {
+        await (actor as any).recordPhotoUsage();
+        const info = await (actor as any).getMySubscription();
+        setSubscriptionInfo(info);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  };
+
+  const recordVideoUsageLocal = async () => {
+    if (isAuthenticated && actor) {
+      try {
+        await (actor as any).recordVideoUsage();
+        const info = await (actor as any).getMySubscription();
+        setSubscriptionInfo(info);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  };
+
   const handleVideoSend = async () => {
     if (!uploadedFile || !uploadedImageUrl) {
       toast.error("Please upload a room photo first");
@@ -479,29 +664,51 @@ export default function DesignTool({ onBack }: DesignToolProps) {
     }
     if (isGenerating) return;
 
-    const prompt =
-      inputText.trim() ||
-      "Animate this room with smooth, cinematic camera movement and subtle lighting transitions.";
+    // Require sign-in before any generation
+    if (!isAuthenticated) {
+      toast.warning("Please sign in first to generate designs.");
+      onLogin();
+      return;
+    }
+
+    // Check video limit
+    if (videosRemaining <= 0) {
+      setShowUpgradeModal(true);
+      return;
+    }
+
+    const defaultPrompt =
+      selectedTool === "AI_VIRTUAL_TOUR"
+        ? "Smooth cinematic walkthrough of this room, professional virtual tour style."
+        : selectedTool === "AI_360_PANORAMA"
+          ? "360-degree panoramic sweep of this room with smooth rotation."
+          : "Animate this room with smooth, cinematic camera movement and subtle lighting transitions.";
+
+    const prompt = inputText.trim() || defaultPrompt;
     const refineTarget = videoRefineTargetId
       ? videoGenerations.find((v) => v.id === videoRefineTargetId)
       : null;
 
-    // Use original image from refine target or current upload
-    const sourceFile = uploadedFile;
     const sourceImageUrl = refineTarget
       ? refineTarget.originalImageUrl
       : uploadedImageUrl;
+
+    let videoPrompt = prompt;
+    if (selectedTool === "AI_VIRTUAL_TOUR") {
+      videoPrompt = `Create a smooth cinematic virtual tour video walkthrough of this room. Professional camera movement, realistic lighting, real estate quality. ${prompt}`;
+    } else if (selectedTool === "AI_360_PANORAMA") {
+      videoPrompt = `Create a 360-degree panoramic video sweep of this room. Smooth rotation, immersive presentation, high quality. ${prompt}`;
+    }
 
     setIsGenerating(true);
     startProgress(true);
     try {
       const puter = (window as any).puter;
       if (!puter) throw new Error("Puter.js not loaded");
-      const videoEl = await puter.ai.txt2vid(prompt, {
+      const videoEl = await puter.ai.txt2vid(videoPrompt, {
         model: "sora-2",
         seconds: selectedDuration,
         size: selectedResolution,
-        input_reference: sourceFile,
       });
       stopProgress();
       setProgress(100);
@@ -519,6 +726,7 @@ export default function DesignTool({ onBack }: DesignToolProps) {
       setVideoGenerations((prev) => [...prev, newVidGen]);
       setVideoRefineTargetId(null);
       setInputText("");
+      await recordVideoUsageLocal();
       toast.success("Video generated!");
     } catch (err) {
       stopProgress();
@@ -540,6 +748,20 @@ export default function DesignTool({ onBack }: DesignToolProps) {
       return;
     }
     if (isGenerating) return;
+
+    // Require sign-in before any generation
+    if (!isAuthenticated) {
+      toast.warning("Please sign in first to generate designs.");
+      onLogin();
+      return;
+    }
+
+    // Check photo limit
+    if (photosRemaining <= 0) {
+      setShowUpgradeModal(true);
+      return;
+    }
+
     const instructions = inputText.trim();
 
     if (refineTargetId) {
@@ -564,6 +786,7 @@ export default function DesignTool({ onBack }: DesignToolProps) {
           generatedImageUrl: imageElement.src,
           tool: target.tool,
           roomType: target.roomType,
+          style: target.style,
           instructions,
           version: target.version + 1,
           timestamp: new Date(),
@@ -571,6 +794,7 @@ export default function DesignTool({ onBack }: DesignToolProps) {
         setGenerations((prev) => [...prev, newGen]);
         setRefineTargetId(null);
         setInputText("");
+        await recordPhotoUsageLocal();
         toast.success("Design refined!");
       } catch (err) {
         stopProgress();
@@ -591,7 +815,7 @@ export default function DesignTool({ onBack }: DesignToolProps) {
         const preservationConstraint = activeTool.modifiesFurniture
           ? ""
           : "IMPORTANT: Do NOT add, remove, or change any furniture or decor items. Preserve all existing furniture exactly as-is. ";
-        const basePrompt = activeTool.prompt(selectedRoom);
+        const basePrompt = activeTool.prompt(selectedRoom, selectedStyle || "");
         const prompt = `${strictConstraints}${preservationConstraint}${basePrompt}`;
         const imageElement = await puter.ai.txt2img(prompt, {
           model: "black-forest-labs/flux.1-kontext-pro",
@@ -606,12 +830,14 @@ export default function DesignTool({ onBack }: DesignToolProps) {
           generatedImageUrl: imageElement.src,
           tool: activeTool.label,
           roomType: selectedRoom,
+          style: selectedStyle || "",
           instructions,
           version: 1,
           timestamp: new Date(),
         };
         setGenerations((prev) => [...prev, newGen]);
         setInputText("");
+        await recordPhotoUsageLocal();
         toast.success("Transformation complete!");
       } catch (err) {
         stopProgress();
@@ -669,7 +895,6 @@ export default function DesignTool({ onBack }: DesignToolProps) {
     ? videoGenerations.find((v) => v.id === videoRefineTargetId)
     : null;
 
-  // Merge and sort by timestamp for chronological chat feed
   type ChatItem =
     | { type: "image"; data: Generation }
     | { type: "video"; data: VideoGeneration };
@@ -680,6 +905,9 @@ export default function DesignTool({ onBack }: DesignToolProps) {
 
   const year = new Date().getFullYear();
   const caffeineHref = `https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(typeof window !== "undefined" ? window.location.hostname : "")}`;
+
+  const planName =
+    isAuthenticated && subscriptionInfo ? subscriptionInfo.plan : "Free";
 
   return (
     <div
@@ -728,240 +956,297 @@ export default function DesignTool({ onBack }: DesignToolProps) {
           </div>
         </div>
 
-        <div className="hidden md:flex items-center gap-2">
-          <span
-            className="text-xs px-3 py-1 rounded-full"
+        {/* Credits + Auth */}
+        <div className="flex items-center gap-2">
+          {/* Credits bar */}
+          <div
+            className="hidden sm:flex items-center gap-3 px-3 py-1.5 rounded-lg"
+            style={{ backgroundColor: "#F3F4F6", border: "1px solid #E2E8F0" }}
+          >
+            <div className="flex items-center gap-1.5">
+              <Wand2
+                className="h-3 w-3"
+                style={{ color: photosRemaining > 0 ? "#4ECDC4" : "#EF4444" }}
+              />
+              <span
+                className="text-xs font-medium"
+                style={{ color: photosRemaining > 0 ? "#374151" : "#EF4444" }}
+              >
+                {photosRemaining} photo{photosRemaining !== 1 ? "s" : ""}
+              </span>
+            </div>
+            <div className="w-px h-3" style={{ backgroundColor: "#D1D5DB" }} />
+            <div className="flex items-center gap-1.5">
+              <Clapperboard
+                className="h-3 w-3"
+                style={{ color: videosRemaining > 0 ? "#6366F1" : "#EF4444" }}
+              />
+              <span
+                className="text-xs font-medium"
+                style={{ color: videosRemaining > 0 ? "#374151" : "#EF4444" }}
+              >
+                {videosRemaining} video{videosRemaining !== 1 ? "s" : ""}
+              </span>
+            </div>
+            <div className="w-px h-3" style={{ backgroundColor: "#D1D5DB" }} />
+            <span className="text-xs" style={{ color: "#9CA3AF" }}>
+              {planName}
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={onUpgrade}
+            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:opacity-90"
             style={{
-              backgroundColor: isVideoMode ? "#EEF2FF" : "#E6F7F6",
-              color: isVideoMode ? "#6366F1" : "#4ECDC4",
-              fontWeight: 600,
+              background: "linear-gradient(135deg, #4ECDC4, #2D9B94)",
+              color: "#FFFFFF",
             }}
           >
-            {isVideoMode && <Clapperboard className="inline h-3 w-3 mr-1" />}
-            {activeTool.label}
-            {activeTool.beta && (
-              <span
-                className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full"
-                style={{ backgroundColor: "#CCFAF7", color: "#0D9488" }}
-              >
-                Beta
-              </span>
-            )}
-          </span>
-        </div>
+            <Crown className="h-3 w-3" />
+            Upgrade
+          </button>
 
-        <Sheet>
-          <SheetTrigger asChild>
+          <button
+            type="button"
+            onClick={onPipeline}
+            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:bg-gray-100"
+            style={{ border: "1px solid #E2E8F0", color: "#374151" }}
+            data-ocid="design.pipeline.button"
+          >
+            <GitBranch className="h-3 w-3" />
+            Pipeline
+          </button>
+
+          {!isAuthenticated ? (
             <button
               type="button"
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors hover:bg-gray-100"
+              onClick={onLogin}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors hover:bg-gray-100"
               style={{ color: "#6B7280", border: "1px solid #E2E8F0" }}
-              data-ocid="design.history.button"
             >
-              <Clock className="h-3.5 w-3.5" />
-              History
-              {totalCount > 0 && (
-                <span
-                  className="ml-1 px-1.5 py-0.5 rounded-full text-xs font-bold"
-                  style={{ backgroundColor: "#4ECDC4", color: "#FFFFFF" }}
-                >
-                  {totalCount}
-                </span>
-              )}
+              <LogIn className="h-3.5 w-3.5" />
+              Sign In
             </button>
-          </SheetTrigger>
-          <SheetContent
-            side="right"
-            className="w-[360px]"
-            style={{
-              backgroundColor: "#FFFFFF",
-              borderLeft: "1px solid #E2E8F0",
-            }}
-          >
-            <SheetHeader>
-              <SheetTitle style={{ color: "#111827" }}>
-                Generation History
-              </SheetTitle>
-            </SheetHeader>
+          ) : null}
 
-            {/* Tab toggle */}
-            <div
-              className="flex mt-3 mb-1 rounded-lg overflow-hidden"
-              style={{ border: "1px solid #E2E8F0" }}
+          <Sheet>
+            <SheetTrigger asChild>
+              <button
+                type="button"
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors hover:bg-gray-100"
+                style={{ color: "#6B7280", border: "1px solid #E2E8F0" }}
+                data-ocid="design.history.button"
+              >
+                <Clock className="h-3.5 w-3.5" />
+                History
+                {totalCount > 0 && (
+                  <span
+                    className="ml-1 px-1.5 py-0.5 rounded-full text-xs font-bold"
+                    style={{ backgroundColor: "#4ECDC4", color: "#FFFFFF" }}
+                  >
+                    {totalCount}
+                  </span>
+                )}
+              </button>
+            </SheetTrigger>
+            <SheetContent
+              side="right"
+              className="w-[360px]"
+              style={{
+                backgroundColor: "#FFFFFF",
+                borderLeft: "1px solid #E2E8F0",
+              }}
             >
-              <button
-                type="button"
-                onClick={() => setHistoryTab("images")}
-                className="flex-1 py-1.5 text-xs font-medium transition-colors"
-                style={{
-                  backgroundColor:
-                    historyTab === "images" ? "#4ECDC4" : "#FFFFFF",
-                  color: historyTab === "images" ? "#FFFFFF" : "#6B7280",
-                }}
-                data-ocid="design.history.images.tab"
-              >
-                Images ({generations.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setHistoryTab("videos")}
-                className="flex-1 py-1.5 text-xs font-medium transition-colors"
-                style={{
-                  backgroundColor:
-                    historyTab === "videos" ? "#6366F1" : "#FFFFFF",
-                  color: historyTab === "videos" ? "#FFFFFF" : "#6B7280",
-                }}
-                data-ocid="design.history.videos.tab"
-              >
-                Videos ({videoGenerations.length})
-              </button>
-            </div>
+              <SheetHeader>
+                <SheetTitle style={{ color: "#111827" }}>
+                  Generation History
+                </SheetTitle>
+              </SheetHeader>
 
-            <ScrollArea className="h-[calc(100vh-120px)] mt-2 pr-1">
-              {historyTab === "images" ? (
-                generations.length === 0 ? (
+              <div
+                className="flex mt-3 mb-1 rounded-lg overflow-hidden"
+                style={{ border: "1px solid #E2E8F0" }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setHistoryTab("images")}
+                  className="flex-1 py-1.5 text-xs font-medium transition-colors"
+                  style={{
+                    backgroundColor:
+                      historyTab === "images" ? "#4ECDC4" : "#FFFFFF",
+                    color: historyTab === "images" ? "#FFFFFF" : "#6B7280",
+                  }}
+                  data-ocid="design.history.images.tab"
+                >
+                  Images ({generations.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setHistoryTab("videos")}
+                  className="flex-1 py-1.5 text-xs font-medium transition-colors"
+                  style={{
+                    backgroundColor:
+                      historyTab === "videos" ? "#6366F1" : "#FFFFFF",
+                    color: historyTab === "videos" ? "#FFFFFF" : "#6B7280",
+                  }}
+                  data-ocid="design.history.videos.tab"
+                >
+                  Videos ({videoGenerations.length})
+                </button>
+              </div>
+
+              <ScrollArea className="h-[calc(100vh-120px)] mt-2 pr-1">
+                {historyTab === "images" ? (
+                  generations.length === 0 ? (
+                    <div
+                      className="flex flex-col items-center justify-center py-20 gap-3"
+                      data-ocid="design.history.empty_state"
+                    >
+                      <Clock
+                        className="h-10 w-10"
+                        style={{ color: "#E2E8F0" }}
+                      />
+                      <p className="text-sm" style={{ color: "#6B7280" }}>
+                        No image generations yet
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3 pb-8">
+                      {generations.map((gen, idx) => (
+                        <div
+                          key={gen.id}
+                          className="rounded-xl overflow-hidden"
+                          style={{
+                            border: "1px solid #E2E8F0",
+                            backgroundColor: "#F8F9FA",
+                          }}
+                          data-ocid={`design.history.item.${idx + 1}`}
+                        >
+                          <img
+                            src={gen.generatedImageUrl}
+                            alt={`Version ${gen.version}`}
+                            className="w-full h-32 object-cover"
+                          />
+                          <div className="p-3">
+                            <div className="flex items-center justify-between mb-1">
+                              <span
+                                className="text-xs font-semibold px-2 py-0.5 rounded-full"
+                                style={{
+                                  backgroundColor: "#E6F7F6",
+                                  color: "#4ECDC4",
+                                }}
+                              >
+                                Version {gen.version}
+                              </span>
+                              <span
+                                className="text-xs"
+                                style={{ color: "#9CA3AF" }}
+                              >
+                                {gen.timestamp.toLocaleTimeString([], {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </span>
+                            </div>
+                            <p
+                              className="text-xs mt-1"
+                              style={{ color: "#6B7280" }}
+                            >
+                              {gen.roomType && `${gen.roomType} · `}
+                              {gen.tool}
+                              {gen.style && ` · ${gen.style}`}
+                            </p>
+                            {gen.instructions && (
+                              <p
+                                className="text-xs mt-1 truncate"
+                                style={{ color: "#9CA3AF" }}
+                              >
+                                "{gen.instructions}"
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                ) : videoGenerations.length === 0 ? (
                   <div
                     className="flex flex-col items-center justify-center py-20 gap-3"
-                    data-ocid="design.history.empty_state"
+                    data-ocid="design.history.videos.empty_state"
                   >
-                    <Clock className="h-10 w-10" style={{ color: "#E2E8F0" }} />
+                    <Clapperboard
+                      className="h-10 w-10"
+                      style={{ color: "#E2E8F0" }}
+                    />
                     <p className="text-sm" style={{ color: "#6B7280" }}>
-                      No image generations yet
+                      No videos yet
                     </p>
                   </div>
                 ) : (
                   <div className="space-y-3 pb-8">
-                    {generations.map((gen, idx) => (
+                    {videoGenerations.map((vid, idx) => (
                       <div
-                        key={gen.id}
+                        key={vid.id}
                         className="rounded-xl overflow-hidden"
                         style={{
                           border: "1px solid #E2E8F0",
                           backgroundColor: "#F8F9FA",
                         }}
-                        data-ocid={`design.history.item.${idx + 1}`}
+                        data-ocid={`design.history.video.item.${idx + 1}`}
                       >
-                        <img
-                          src={gen.generatedImageUrl}
-                          alt={`Version ${gen.version}`}
+                        <video
+                          src={vid.videoUrl}
                           className="w-full h-32 object-cover"
+                          muted
                         />
                         <div className="p-3">
-                          <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-2 mb-1">
                             <span
                               className="text-xs font-semibold px-2 py-0.5 rounded-full"
                               style={{
-                                backgroundColor: "#E6F7F6",
-                                color: "#4ECDC4",
+                                backgroundColor: "#EEF2FF",
+                                color: "#6366F1",
                               }}
                             >
-                              Version {gen.version}
+                              {vid.duration}s
                             </span>
                             <span
-                              className="text-xs"
+                              className="text-xs px-2 py-0.5 rounded-full"
+                              style={{
+                                backgroundColor: "#F3F4F6",
+                                color: "#6B7280",
+                              }}
+                            >
+                              {vid.resolution}
+                            </span>
+                            <span
+                              className="text-xs ml-auto"
                               style={{ color: "#9CA3AF" }}
                             >
-                              {gen.timestamp.toLocaleTimeString([], {
+                              {vid.timestamp.toLocaleTimeString([], {
                                 hour: "2-digit",
                                 minute: "2-digit",
                               })}
                             </span>
                           </div>
-                          <p
-                            className="text-xs mt-1"
-                            style={{ color: "#6B7280" }}
-                          >
-                            {gen.roomType} · {gen.tool}
-                          </p>
-                          {gen.instructions && (
+                          {vid.prompt && (
                             <p
                               className="text-xs mt-1 truncate"
                               style={{ color: "#9CA3AF" }}
                             >
-                              "{gen.instructions}"
+                              "{vid.prompt}"
                             </p>
                           )}
                         </div>
                       </div>
                     ))}
                   </div>
-                )
-              ) : videoGenerations.length === 0 ? (
-                <div
-                  className="flex flex-col items-center justify-center py-20 gap-3"
-                  data-ocid="design.history.videos.empty_state"
-                >
-                  <Clapperboard
-                    className="h-10 w-10"
-                    style={{ color: "#E2E8F0" }}
-                  />
-                  <p className="text-sm" style={{ color: "#6B7280" }}>
-                    No videos yet
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-3 pb-8">
-                  {videoGenerations.map((vid, idx) => (
-                    <div
-                      key={vid.id}
-                      className="rounded-xl overflow-hidden"
-                      style={{
-                        border: "1px solid #E2E8F0",
-                        backgroundColor: "#F8F9FA",
-                      }}
-                      data-ocid={`design.history.video.item.${idx + 1}`}
-                    >
-                      <video
-                        src={vid.videoUrl}
-                        className="w-full h-32 object-cover"
-                        muted
-                      />
-                      <div className="p-3">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span
-                            className="text-xs font-semibold px-2 py-0.5 rounded-full"
-                            style={{
-                              backgroundColor: "#EEF2FF",
-                              color: "#6366F1",
-                            }}
-                          >
-                            {vid.duration}s
-                          </span>
-                          <span
-                            className="text-xs px-2 py-0.5 rounded-full"
-                            style={{
-                              backgroundColor: "#F3F4F6",
-                              color: "#6B7280",
-                            }}
-                          >
-                            {vid.resolution}
-                          </span>
-                          <span
-                            className="text-xs ml-auto"
-                            style={{ color: "#9CA3AF" }}
-                          >
-                            {vid.timestamp.toLocaleTimeString([], {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </span>
-                        </div>
-                        {vid.prompt && (
-                          <p
-                            className="text-xs mt-1 truncate"
-                            style={{ color: "#9CA3AF" }}
-                          >
-                            "{vid.prompt}"
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </ScrollArea>
-          </SheetContent>
-        </Sheet>
+                )}
+              </ScrollArea>
+            </SheetContent>
+          </Sheet>
+        </div>
       </header>
 
       {/* Body: sidebar + main */}
@@ -979,6 +1264,8 @@ export default function DesignTool({ onBack }: DesignToolProps) {
           <SidebarContent
             selectedTool={selectedTool}
             onSelect={setSelectedTool}
+            selectedStyle={selectedStyle}
+            onStyleSelect={setSelectedStyle}
           />
         </aside>
 
@@ -1007,6 +1294,8 @@ export default function DesignTool({ onBack }: DesignToolProps) {
                 setSelectedTool(id);
                 setSidebarOpen(false);
               }}
+              selectedStyle={selectedStyle}
+              onStyleSelect={setSelectedStyle}
             />
           </SheetContent>
         </Sheet>
@@ -1054,6 +1343,19 @@ export default function DesignTool({ onBack }: DesignToolProps) {
                       ? "Upload a photo and describe the animation below"
                       : "Upload a photo below to get started"}
                   </p>
+                  {selectedStyle && (
+                    <div
+                      className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full"
+                      style={{ backgroundColor: "#E6F7F6" }}
+                    >
+                      <span
+                        className="text-xs font-medium"
+                        style={{ color: "#2D9B94" }}
+                      >
+                        Style: {selectedStyle}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </motion.div>
             ) : (
@@ -1099,12 +1401,25 @@ export default function DesignTool({ onBack }: DesignToolProps) {
                               >
                                 {gen.tool}
                               </span>
-                              <span
-                                className="text-xs"
-                                style={{ color: "#9CA3AF" }}
-                              >
-                                · {gen.roomType}
-                              </span>
+                              {gen.roomType && (
+                                <span
+                                  className="text-xs"
+                                  style={{ color: "#9CA3AF" }}
+                                >
+                                  · {gen.roomType}
+                                </span>
+                              )}
+                              {gen.style && (
+                                <span
+                                  className="text-xs px-2 py-0.5 rounded-full"
+                                  style={{
+                                    backgroundColor: "#F3F4F6",
+                                    color: "#6B7280",
+                                  }}
+                                >
+                                  {gen.style}
+                                </span>
+                              )}
                             </div>
                             <div className="flex items-center gap-2">
                               <button
@@ -1157,7 +1472,6 @@ export default function DesignTool({ onBack }: DesignToolProps) {
                       );
                     }
 
-                    // Video card
                     const vid = item.data;
                     return (
                       <motion.div
@@ -1418,7 +1732,7 @@ export default function DesignTool({ onBack }: DesignToolProps) {
                     : refineTarget
                       ? "Describe changes to apply..."
                       : isVideoMode
-                        ? "Describe the video animation..."
+                        ? "Describe the video animation (optional)..."
                         : "Add instructions (optional)..."
                 }
                 className="flex-1 h-10 text-sm"
@@ -1438,7 +1752,6 @@ export default function DesignTool({ onBack }: DesignToolProps) {
 
               {isVideoMode ? (
                 <>
-                  {/* Duration selector */}
                   <Select
                     value={String(selectedDuration)}
                     onValueChange={(v) => setSelectedDuration(Number(v))}
@@ -1472,7 +1785,6 @@ export default function DesignTool({ onBack }: DesignToolProps) {
                     </SelectContent>
                   </Select>
 
-                  {/* Resolution selector */}
                   <Select
                     value={selectedResolution}
                     onValueChange={setSelectedResolution}
@@ -1503,7 +1815,10 @@ export default function DesignTool({ onBack }: DesignToolProps) {
                   </Select>
                 </>
               ) : (
-                <Select value={selectedRoom} onValueChange={setSelectedRoom}>
+                <Select
+                  value={selectedRoom || "none"}
+                  onValueChange={(v) => setSelectedRoom(v === "none" ? "" : v)}
+                >
                   <SelectTrigger
                     className="w-[130px] h-10 text-xs flex-shrink-0"
                     style={{
@@ -1513,7 +1828,7 @@ export default function DesignTool({ onBack }: DesignToolProps) {
                     }}
                     data-ocid="design.room.select"
                   >
-                    <SelectValue />
+                    <SelectValue placeholder="Room (optional)" />
                   </SelectTrigger>
                   <SelectContent
                     style={{
@@ -1521,6 +1836,13 @@ export default function DesignTool({ onBack }: DesignToolProps) {
                       border: "1px solid #E2E8F0",
                     }}
                   >
+                    <SelectItem
+                      value="none"
+                      className="text-xs"
+                      style={{ color: "#9CA3AF" }}
+                    >
+                      Any Room
+                    </SelectItem>
                     {ROOM_TYPES.map((r) => (
                       <SelectItem
                         key={r}
@@ -1539,6 +1861,7 @@ export default function DesignTool({ onBack }: DesignToolProps) {
                 type="button"
                 onClick={handleSend}
                 disabled={
+                  !isAuthenticated ||
                   !uploadedImageUrl ||
                   isGenerating ||
                   (isVideoMode && !uploadedFile)
@@ -1559,6 +1882,8 @@ export default function DesignTool({ onBack }: DesignToolProps) {
                     className="h-4 w-4 animate-spin"
                     style={{ color: isVideoMode ? "#6366F1" : "#4ECDC4" }}
                   />
+                ) : !isAuthenticated ? (
+                  <LogIn className="h-4 w-4" style={{ color: "#9CA3AF" }} />
                 ) : isVideoMode ? (
                   <Clapperboard
                     className="h-4 w-4"
@@ -1591,6 +1916,67 @@ export default function DesignTool({ onBack }: DesignToolProps) {
           </div>
         </div>
       </div>
+
+      {/* Upgrade Modal */}
+      <Dialog open={showUpgradeModal} onOpenChange={setShowUpgradeModal}>
+        <DialogContent
+          className="max-w-md"
+          style={{ backgroundColor: "#FFFFFF" }}
+        >
+          <DialogHeader>
+            <DialogTitle
+              className="flex items-center gap-2"
+              style={{ color: "#111827" }}
+            >
+              <Crown className="h-5 w-5" style={{ color: "#4ECDC4" }} />
+              You've reached your limit
+            </DialogTitle>
+            <DialogDescription style={{ color: "#6B7280" }}>
+              {!isAuthenticated
+                ? "Sign in and upgrade to a plan to generate more designs."
+                : "Upgrade your plan to get more photos and videos this month."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 mt-2">
+            {!isAuthenticated && (
+              <button
+                type="button"
+                onClick={() => {
+                  setShowUpgradeModal(false);
+                  onLogin();
+                }}
+                className="w-full py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                style={{
+                  background: "linear-gradient(135deg, #4ECDC4, #2D9B94)",
+                }}
+              >
+                Sign In with Internet Identity
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                setShowUpgradeModal(false);
+                onUpgrade();
+              }}
+              className="w-full py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
+              style={{
+                background: "linear-gradient(135deg, #6366F1, #4F46E5)",
+              }}
+            >
+              View Plans
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowUpgradeModal(false)}
+              className="w-full py-2 text-sm"
+              style={{ color: "#9CA3AF" }}
+            >
+              Cancel
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

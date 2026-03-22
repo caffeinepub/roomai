@@ -1,27 +1,26 @@
 # RoomAI
 
 ## Current State
-DesignTool is a single-window chat-style interface with room type and style selectors. No sidebar tool categories exist.
+RoomAI has a Landing page, Design Tool, and Pricing page. The Design Tool allows single-image generation via Puter API.
 
 ## Requested Changes (Diff)
 
 ### Add
-- Left sidebar with all AI transformation tools grouped by category
-- Tools: Add Furniture, Furniture Eraser, Room Decluttering, Enhance Photo Quality, Material Overlay, Virtual Twilight, Changing Seasons, Pool Water Enhancement, Lawn Replacement, Night to Day, Rain to Shine, Natural Twilight, Add Water to an Empty Pool, AI Holiday Card, Multi-Angle Staging, AI Design Agent, AI Virtual Tour, AI 360° Panorama Beta
-- Each tool has a unique AI prompt
-- Active tool is highlighted in sidebar
-- AI 360° Panorama Beta has a "Beta" badge
+- New `PipelinePage` accessible via a "Pipeline" nav link in the Design Tool header
+- Pipeline UI: a table/list where each row has an image URL input, a prompt textarea, and a status indicator
+- Users can add/remove rows
+- A "Run Pipeline" button processes all rows sequentially, calling Puter `flux.1-kontext-pro` for each
+- Each row shows: input image thumbnail, prompt, status (pending/running/done/error), output image
+- Results are displayed inline per row
 
 ### Modify
-- DesignTool layout: add collapsible left sidebar
-- Prompt generation to use the selected tool's specific prompt
-- Bottom bar input reflects the active tool
+- App.tsx: add `pipeline` to AppView type and route to PipelinePage
+- DesignTool header: add Pipeline nav link
 
 ### Remove
 - Nothing removed
 
 ## Implementation Plan
-1. Define TOOLS array with name, icon, group, description, and prompt template
-2. Add sidebar column to DesignTool layout
-3. Connect tool selection to prompt generation
-4. Style sidebar with white theme, active state highlight
+1. Create `src/frontend/src/pages/PipelinePage.tsx` with pipeline UI
+2. Update `App.tsx` to add pipeline view routing
+3. Add Pipeline link in DesignTool header nav

@@ -17,6 +17,11 @@ import {
 import { motion } from "motion/react";
 
 interface LandingPageProps {
+  onPricing: () => void;
+  isAuthenticated: boolean;
+  onLogin: () => void;
+  onLogout: () => void;
+  isInitializing: boolean;
   onGetStarted: () => void;
 }
 
@@ -62,7 +67,14 @@ const SOCIAL_ICONS = [
   { Icon: Github, label: "Github" },
 ];
 
-export default function LandingPage({ onGetStarted }: LandingPageProps) {
+export default function LandingPage({
+  onGetStarted,
+  onPricing: _onPricing,
+  isAuthenticated: _isAuthenticated,
+  onLogin: _onLogin,
+  onLogout: _onLogout,
+  isInitializing: _isInitializing,
+}: LandingPageProps) {
   const year = new Date().getFullYear();
   const caffeineHref = `https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(typeof window !== "undefined" ? window.location.hostname : "")}`;
 
