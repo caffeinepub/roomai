@@ -10,6 +10,12 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
+export interface CustomTheme {
+  'id' : string,
+  'name' : string,
+  'createdAt' : Time,
+  'prompt' : string,
+}
 export interface Design {
   'style' : string,
   'timestamp' : Time,
@@ -32,7 +38,7 @@ export type StripeSessionStatus = {
   { 'failed' : { 'error' : string } };
 export interface SubscriptionInfo {
   'photosUsed' : bigint,
-  'plan' : SubscriptionPlan,
+  'plan' : [] | [SubscriptionPlan],
   'videoLimit' : bigint,
   'videosUsed' : bigint,
   'photoLimit' : bigint,
@@ -64,18 +70,22 @@ export interface http_request_result {
 }
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
+  'addCustomTheme' : ActorMethod<[string, string], string>,
   'addDesign' : ActorMethod<[string, string], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
+  'claimRazorpayPayment' : ActorMethod<[string, string], undefined>,
   'createCheckoutSession' : ActorMethod<
     [Array<ShoppingItem>, string, string],
     string
   >,
+  'deleteCustomTheme' : ActorMethod<[string], boolean>,
   'getAllDesigns' : ActorMethod<[], Array<Design>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getDesignHistorySorted' : ActorMethod<[], Array<Design>>,
-  'getDesignsByRoomType' : ActorMethod<[string], Array<Design>>,
+  'getMyCustomThemes' : ActorMethod<[], Array<CustomTheme>>,
   'getMySubscription' : ActorMethod<[], SubscriptionInfo>,
+  'getPuterToken' : ActorMethod<[], [] | [string]>,
   'getStripeSessionStatus' : ActorMethod<[string], StripeSessionStatus>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
@@ -83,6 +93,7 @@ export interface _SERVICE {
   'recordPhotoUsage' : ActorMethod<[], undefined>,
   'recordVideoUsage' : ActorMethod<[], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
+  'setPuterToken' : ActorMethod<[string], undefined>,
   'setStripeConfiguration' : ActorMethod<[StripeConfiguration], undefined>,
   'setUserPlan' : ActorMethod<[Principal, SubscriptionPlan], undefined>,
   'transform' : ActorMethod<[TransformationInput], TransformationOutput>,

@@ -7,6 +7,29 @@ export interface None {
     __kind__: "None";
 }
 export type Option<T> = Some<T> | None;
+export interface TransformationOutput {
+    status: bigint;
+    body: Uint8Array;
+    headers: Array<http_header>;
+}
+export type Time = bigint;
+export interface CustomTheme {
+    id: string;
+    name: string;
+    createdAt: Time;
+    prompt: string;
+}
+export interface SubscriptionInfo {
+    photosUsed: bigint;
+    plan?: SubscriptionPlan;
+    videoLimit: bigint;
+    videosUsed: bigint;
+    photoLimit: bigint;
+}
+export interface http_header {
+    value: string;
+    name: string;
+}
 export interface http_request_result {
     status: bigint;
     body: Uint8Array;
@@ -17,12 +40,6 @@ export interface Design {
     timestamp: Time;
     roomType: string;
 }
-export interface TransformationOutput {
-    status: bigint;
-    body: Uint8Array;
-    headers: Array<http_header>;
-}
-export type Time = bigint;
 export interface ShoppingItem {
     productName: string;
     currency: string;
@@ -46,22 +63,11 @@ export type StripeSessionStatus = {
         error: string;
     };
 };
-export interface SubscriptionInfo {
-    photosUsed: bigint;
-    plan: SubscriptionPlan;
-    videoLimit: bigint;
-    videosUsed: bigint;
-    photoLimit: bigint;
-}
 export interface StripeConfiguration {
     allowedCountries: Array<string>;
     secretKey: string;
 }
 export interface UserProfile {
-    name: string;
-}
-export interface http_header {
-    value: string;
     name: string;
 }
 export enum SubscriptionPlan {
@@ -77,15 +83,19 @@ export enum UserRole {
     guest = "guest"
 }
 export interface backendInterface {
+    addCustomTheme(name: string, prompt: string): Promise<string>;
     addDesign(roomType: string, style: string): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
+    claimRazorpayPayment(paymentId: string, planId: string): Promise<void>;
     createCheckoutSession(items: Array<ShoppingItem>, successUrl: string, cancelUrl: string): Promise<string>;
+    deleteCustomTheme(themeId: string): Promise<boolean>;
     getAllDesigns(): Promise<Array<Design>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     getDesignHistorySorted(): Promise<Array<Design>>;
-    getDesignsByRoomType(roomType: string): Promise<Array<Design>>;
+    getMyCustomThemes(): Promise<Array<CustomTheme>>;
     getMySubscription(): Promise<SubscriptionInfo>;
+    getPuterToken(): Promise<string | null>;
     getStripeSessionStatus(sessionId: string): Promise<StripeSessionStatus>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
@@ -93,6 +103,7 @@ export interface backendInterface {
     recordPhotoUsage(): Promise<void>;
     recordVideoUsage(): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
+    setPuterToken(token: string): Promise<void>;
     setStripeConfiguration(config: StripeConfiguration): Promise<void>;
     setUserPlan(user: Principal, plan: SubscriptionPlan): Promise<void>;
     transform(input: TransformationInput): Promise<TransformationOutput>;

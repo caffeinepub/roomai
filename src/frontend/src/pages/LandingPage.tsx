@@ -70,9 +70,9 @@ const SOCIAL_ICONS = [
 export default function LandingPage({
   onGetStarted,
   onPricing: _onPricing,
-  isAuthenticated: _isAuthenticated,
-  onLogin: _onLogin,
-  onLogout: _onLogout,
+  isAuthenticated,
+  onLogin,
+  onLogout,
   isInitializing: _isInitializing,
 }: LandingPageProps) {
   const year = new Date().getFullYear();
@@ -114,14 +114,27 @@ export default function LandingPage({
           </nav>
 
           <div className="flex items-center gap-4">
-            <button
-              type="button"
-              className="text-sm font-medium"
-              style={{ color: "#3A3A3A" }}
-              data-ocid="nav.login.link"
-            >
-              Login
-            </button>
+            {isAuthenticated ? (
+              <button
+                type="button"
+                onClick={onLogout}
+                className="text-sm font-medium"
+                style={{ color: "#3A3A3A" }}
+                data-ocid="nav.logout.button"
+              >
+                Log Out
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={onLogin}
+                className="text-sm font-medium"
+                style={{ color: "#3A3A3A" }}
+                data-ocid="nav.login.link"
+              >
+                Sign In
+              </button>
+            )}
             <Button
               onClick={onGetStarted}
               className="text-sm font-medium"
@@ -211,7 +224,7 @@ export default function LandingPage({
                 className="mx-auto text-xs font-medium"
                 style={{ color: "#9AB" }}
               >
-                RoomAI Design Studio
+                StagePro Design Studio
               </div>
             </div>
 
@@ -548,7 +561,7 @@ export default function LandingPage({
                   className="font-bold text-lg"
                   style={{ color: "#F7F7F5" }}
                 >
-                  RoomAI
+                  StagePro
                 </span>
               </div>
               <p className="text-sm" style={{ color: "#9AB" }}>

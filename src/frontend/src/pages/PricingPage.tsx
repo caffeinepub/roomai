@@ -82,14 +82,14 @@ const PLANS = [
     id: "max",
     name: "Max",
     price: 9999,
-    photos: 9999,
-    videos: 9999,
+    photos: 250,
+    videos: 50,
     color: "#EC4899",
     bg: "#FCE7F3",
     razorpayLink: "https://rzp.io/rzp/OfYF5yMg",
     features: [
-      "9999 photo transformations/month",
-      "9999 video generations/month",
+      "250 photo transformations/month",
+      "50 video generations/month",
       "All design tools",
       "Ultra HD quality",
       "Priority processing",
@@ -145,7 +145,7 @@ export default function PricingPage({
               R
             </div>
             <span className="font-bold text-sm" style={{ color: "#111827" }}>
-              RoomAI
+              StagePro
             </span>
           </div>
         </div>

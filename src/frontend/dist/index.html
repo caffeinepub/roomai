@@ -2,20 +2,39 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>RoomAI — AI Interior Design</title>
+    <title>StagePro — AI Interior Design</title>
     <meta name="description" content="Transform your room with AI. Upload a photo and get stunning interior design results in seconds." />
     <script src="https://js.puter.com/v2/"></script>
     <script>
-      window.addEventListener('load', function() {
-        try {
-          if (window.puter && window.puter.auth && window.puter.auth.setAuthToken) {
-            window.puter.auth.setAuthToken('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0IjoiZ3VpIiwidiI6IjAuMC4wIiwidSI6Inc2OExnRUdQVGpPVldhckljTXRBRVE9PSIsInV1IjoiUXZkOHRQZFpSQXViY0RpN2dsTlRWUT09IiwiaWF0IjoxNzc0MDYyODkxfQ.xu11MZxYtDsjkpARyr7xZDHcz5yizW6jEIcEcPCuZxA');
+      (function() {
+        var TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0IjoiZ3VpIiwidiI6IjAuMC4wIiwidSI6IkN6UGFkdzU4UUN5ZXlzWXN2UDZmYlE9PSIsInV1IjoiaXRMNE41b1dSazIwK0JsakhIYWdhUT09IiwiaWF0IjoxNzc0MjU0NDY3fQ.zFnjn9VDwQbNV6YyA-FcQdOs8cF0FXbQ_pK9aqaOxR4';
+        function applyToken() {
+          try {
+            if (window.puter && window.puter.auth) {
+              if (typeof window.puter.auth.setAuthToken === 'function') {
+                window.puter.auth.setAuthToken(TOKEN);
+              } else {
+                window.puter.authToken = TOKEN;
+              }
+            }
+          } catch(e) {}
+        }
+        // Apply immediately and also on load
+        applyToken();
+        window.addEventListener('load', applyToken);
+        // Intercept any puter sign-in popups
+        var _open = window.open;
+        window.open = function(url, name, features) {
+          if (url && typeof url === 'string' && url.indexOf('puter.com') !== -1) {
+            applyToken();
+            return null;
           }
-        } catch(e) {}
-      });
+          return _open.apply(this, arguments);
+        };
+      })();
     </script>
-    <script type="module" crossorigin src="/assets/index-C_XQxTLz.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-DqrrhOaq.css">
+    <script type="module" crossorigin src="/assets/index-BG8fAhuu.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-DA1ZLz9P.css">
   </head>
   <body>
     <div id="root"></div>

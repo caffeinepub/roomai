@@ -27,6 +27,12 @@ export const Design = IDL.Record({
   'roomType' : IDL.Text,
 });
 export const UserProfile = IDL.Record({ 'name' : IDL.Text });
+export const CustomTheme = IDL.Record({
+  'id' : IDL.Text,
+  'name' : IDL.Text,
+  'createdAt' : Time,
+  'prompt' : IDL.Text,
+});
 export const SubscriptionPlan = IDL.Variant({
   'Max' : IDL.Null,
   'Pro' : IDL.Null,
@@ -36,7 +42,7 @@ export const SubscriptionPlan = IDL.Variant({
 });
 export const SubscriptionInfo = IDL.Record({
   'photosUsed' : IDL.Nat,
-  'plan' : SubscriptionPlan,
+  'plan' : IDL.Opt(SubscriptionPlan),
   'videoLimit' : IDL.Nat,
   'videosUsed' : IDL.Nat,
   'photoLimit' : IDL.Nat,
@@ -73,19 +79,23 @@ export const TransformationOutput = IDL.Record({
 
 export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
+  'addCustomTheme' : IDL.Func([IDL.Text, IDL.Text], [IDL.Text], []),
   'addDesign' : IDL.Func([IDL.Text, IDL.Text], [], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+  'claimRazorpayPayment' : IDL.Func([IDL.Text, IDL.Text], [], []),
   'createCheckoutSession' : IDL.Func(
       [IDL.Vec(ShoppingItem), IDL.Text, IDL.Text],
       [IDL.Text],
       [],
     ),
+  'deleteCustomTheme' : IDL.Func([IDL.Text], [IDL.Bool], []),
   'getAllDesigns' : IDL.Func([], [IDL.Vec(Design)], ['query']),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
   'getDesignHistorySorted' : IDL.Func([], [IDL.Vec(Design)], ['query']),
-  'getDesignsByRoomType' : IDL.Func([IDL.Text], [IDL.Vec(Design)], ['query']),
+  'getMyCustomThemes' : IDL.Func([], [IDL.Vec(CustomTheme)], ['query']),
   'getMySubscription' : IDL.Func([], [SubscriptionInfo], ['query']),
+  'getPuterToken' : IDL.Func([], [IDL.Opt(IDL.Text)], ['query']),
   'getStripeSessionStatus' : IDL.Func([IDL.Text], [StripeSessionStatus], []),
   'getUserProfile' : IDL.Func(
       [IDL.Principal],
@@ -97,6 +107,7 @@ export const idlService = IDL.Service({
   'recordPhotoUsage' : IDL.Func([], [], []),
   'recordVideoUsage' : IDL.Func([], [], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+  'setPuterToken' : IDL.Func([IDL.Text], [], []),
   'setStripeConfiguration' : IDL.Func([StripeConfiguration], [], []),
   'setUserPlan' : IDL.Func([IDL.Principal, SubscriptionPlan], [], []),
   'transform' : IDL.Func(
@@ -128,6 +139,12 @@ export const idlFactory = ({ IDL }) => {
     'roomType' : IDL.Text,
   });
   const UserProfile = IDL.Record({ 'name' : IDL.Text });
+  const CustomTheme = IDL.Record({
+    'id' : IDL.Text,
+    'name' : IDL.Text,
+    'createdAt' : Time,
+    'prompt' : IDL.Text,
+  });
   const SubscriptionPlan = IDL.Variant({
     'Max' : IDL.Null,
     'Pro' : IDL.Null,
@@ -137,7 +154,7 @@ export const idlFactory = ({ IDL }) => {
   });
   const SubscriptionInfo = IDL.Record({
     'photosUsed' : IDL.Nat,
-    'plan' : SubscriptionPlan,
+    'plan' : IDL.Opt(SubscriptionPlan),
     'videoLimit' : IDL.Nat,
     'videosUsed' : IDL.Nat,
     'photoLimit' : IDL.Nat,
@@ -171,19 +188,23 @@ export const idlFactory = ({ IDL }) => {
   
   return IDL.Service({
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
+    'addCustomTheme' : IDL.Func([IDL.Text, IDL.Text], [IDL.Text], []),
     'addDesign' : IDL.Func([IDL.Text, IDL.Text], [], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+    'claimRazorpayPayment' : IDL.Func([IDL.Text, IDL.Text], [], []),
     'createCheckoutSession' : IDL.Func(
         [IDL.Vec(ShoppingItem), IDL.Text, IDL.Text],
         [IDL.Text],
         [],
       ),
+    'deleteCustomTheme' : IDL.Func([IDL.Text], [IDL.Bool], []),
     'getAllDesigns' : IDL.Func([], [IDL.Vec(Design)], ['query']),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
     'getDesignHistorySorted' : IDL.Func([], [IDL.Vec(Design)], ['query']),
-    'getDesignsByRoomType' : IDL.Func([IDL.Text], [IDL.Vec(Design)], ['query']),
+    'getMyCustomThemes' : IDL.Func([], [IDL.Vec(CustomTheme)], ['query']),
     'getMySubscription' : IDL.Func([], [SubscriptionInfo], ['query']),
+    'getPuterToken' : IDL.Func([], [IDL.Opt(IDL.Text)], ['query']),
     'getStripeSessionStatus' : IDL.Func([IDL.Text], [StripeSessionStatus], []),
     'getUserProfile' : IDL.Func(
         [IDL.Principal],
@@ -195,6 +216,7 @@ export const idlFactory = ({ IDL }) => {
     'recordPhotoUsage' : IDL.Func([], [], []),
     'recordVideoUsage' : IDL.Func([], [], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+    'setPuterToken' : IDL.Func([IDL.Text], [], []),
     'setStripeConfiguration' : IDL.Func([StripeConfiguration], [], []),
     'setUserPlan' : IDL.Func([IDL.Principal, SubscriptionPlan], [], []),
     'transform' : IDL.Func(

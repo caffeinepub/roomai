@@ -89,6 +89,29 @@ export class ExternalBlob {
         return this;
     }
 }
+export interface TransformationOutput {
+    status: bigint;
+    body: Uint8Array;
+    headers: Array<http_header>;
+}
+export type Time = bigint;
+export interface CustomTheme {
+    id: string;
+    name: string;
+    createdAt: Time;
+    prompt: string;
+}
+export interface SubscriptionInfo {
+    photosUsed: bigint;
+    plan?: SubscriptionPlan;
+    videoLimit: bigint;
+    videosUsed: bigint;
+    photoLimit: bigint;
+}
+export interface http_header {
+    value: string;
+    name: string;
+}
 export interface http_request_result {
     status: bigint;
     body: Uint8Array;
@@ -99,12 +122,6 @@ export interface Design {
     timestamp: Time;
     roomType: string;
 }
-export interface TransformationOutput {
-    status: bigint;
-    body: Uint8Array;
-    headers: Array<http_header>;
-}
-export type Time = bigint;
 export interface ShoppingItem {
     productName: string;
     currency: string;
@@ -128,22 +145,11 @@ export type StripeSessionStatus = {
         error: string;
     };
 };
-export interface SubscriptionInfo {
-    photosUsed: bigint;
-    plan: SubscriptionPlan;
-    videoLimit: bigint;
-    videosUsed: bigint;
-    photoLimit: bigint;
-}
 export interface StripeConfiguration {
     allowedCountries: Array<string>;
     secretKey: string;
 }
 export interface UserProfile {
-    name: string;
-}
-export interface http_header {
-    value: string;
     name: string;
 }
 export enum SubscriptionPlan {
@@ -160,15 +166,19 @@ export enum UserRole {
 }
 export interface backendInterface {
     _initializeAccessControlWithSecret(userSecret: string): Promise<void>;
+    addCustomTheme(name: string, prompt: string): Promise<string>;
     addDesign(roomType: string, style: string): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
+    claimRazorpayPayment(paymentId: string, planId: string): Promise<void>;
     createCheckoutSession(items: Array<ShoppingItem>, successUrl: string, cancelUrl: string): Promise<string>;
+    deleteCustomTheme(themeId: string): Promise<boolean>;
     getAllDesigns(): Promise<Array<Design>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     getDesignHistorySorted(): Promise<Array<Design>>;
-    getDesignsByRoomType(roomType: string): Promise<Array<Design>>;
+    getMyCustomThemes(): Promise<Array<CustomTheme>>;
     getMySubscription(): Promise<SubscriptionInfo>;
+    getPuterToken(): Promise<string | null>;
     getStripeSessionStatus(sessionId: string): Promise<StripeSessionStatus>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
@@ -176,6 +186,7 @@ export interface backendInterface {
     recordPhotoUsage(): Promise<void>;
     recordVideoUsage(): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
+    setPuterToken(token: string): Promise<void>;
     setStripeConfiguration(config: StripeConfiguration): Promise<void>;
     setUserPlan(user: Principal, plan: SubscriptionPlan): Promise<void>;
     transform(input: TransformationInput): Promise<TransformationOutput>;
@@ -194,6 +205,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor._initializeAccessControlWithSecret(arg0);
+            return result;
+        }
+    }
+    async addCustomTheme(arg0: string, arg1: string): Promise<string> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.addCustomTheme(arg0, arg1);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.addCustomTheme(arg0, arg1);
             return result;
         }
     }
@@ -225,6 +250,20 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async claimRazorpayPayment(arg0: string, arg1: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.claimRazorpayPayment(arg0, arg1);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.claimRazorpayPayment(arg0, arg1);
+            return result;
+        }
+    }
     async createCheckoutSession(arg0: Array<ShoppingItem>, arg1: string, arg2: string): Promise<string> {
         if (this.processError) {
             try {
@@ -236,6 +275,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.createCheckoutSession(arg0, arg1, arg2);
+            return result;
+        }
+    }
+    async deleteCustomTheme(arg0: string): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.deleteCustomTheme(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.deleteCustomTheme(arg0);
             return result;
         }
     }
@@ -295,17 +348,17 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async getDesignsByRoomType(arg0: string): Promise<Array<Design>> {
+    async getMyCustomThemes(): Promise<Array<CustomTheme>> {
         if (this.processError) {
             try {
-                const result = await this.actor.getDesignsByRoomType(arg0);
+                const result = await this.actor.getMyCustomThemes();
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.getDesignsByRoomType(arg0);
+            const result = await this.actor.getMyCustomThemes();
             return result;
         }
     }
@@ -323,18 +376,32 @@ export class Backend implements backendInterface {
             return from_candid_SubscriptionInfo_n6(this._uploadFile, this._downloadFile, result);
         }
     }
+    async getPuterToken(): Promise<string | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getPuterToken();
+                return from_candid_opt_n11(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getPuterToken();
+            return from_candid_opt_n11(this._uploadFile, this._downloadFile, result);
+        }
+    }
     async getStripeSessionStatus(arg0: string): Promise<StripeSessionStatus> {
         if (this.processError) {
             try {
                 const result = await this.actor.getStripeSessionStatus(arg0);
-                return from_candid_StripeSessionStatus_n10(this._uploadFile, this._downloadFile, result);
+                return from_candid_StripeSessionStatus_n12(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getStripeSessionStatus(arg0);
-            return from_candid_StripeSessionStatus_n10(this._uploadFile, this._downloadFile, result);
+            return from_candid_StripeSessionStatus_n12(this._uploadFile, this._downloadFile, result);
         }
     }
     async getUserProfile(arg0: Principal): Promise<UserProfile | null> {
@@ -421,6 +488,20 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async setPuterToken(arg0: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.setPuterToken(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.setPuterToken(arg0);
+            return result;
+        }
+    }
     async setStripeConfiguration(arg0: StripeConfiguration): Promise<void> {
         if (this.processError) {
             try {
@@ -438,14 +519,14 @@ export class Backend implements backendInterface {
     async setUserPlan(arg0: Principal, arg1: SubscriptionPlan): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.setUserPlan(arg0, to_candid_SubscriptionPlan_n14(this._uploadFile, this._downloadFile, arg1));
+                const result = await this.actor.setUserPlan(arg0, to_candid_SubscriptionPlan_n15(this._uploadFile, this._downloadFile, arg1));
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.setUserPlan(arg0, to_candid_SubscriptionPlan_n14(this._uploadFile, this._downloadFile, arg1));
+            const result = await this.actor.setUserPlan(arg0, to_candid_SubscriptionPlan_n15(this._uploadFile, this._downloadFile, arg1));
             return result;
         }
     }
@@ -464,25 +545,28 @@ export class Backend implements backendInterface {
         }
     }
 }
-function from_candid_StripeSessionStatus_n10(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _StripeSessionStatus): StripeSessionStatus {
-    return from_candid_variant_n11(_uploadFile, _downloadFile, value);
+function from_candid_StripeSessionStatus_n12(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _StripeSessionStatus): StripeSessionStatus {
+    return from_candid_variant_n13(_uploadFile, _downloadFile, value);
 }
 function from_candid_SubscriptionInfo_n6(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _SubscriptionInfo): SubscriptionInfo {
     return from_candid_record_n7(_uploadFile, _downloadFile, value);
 }
-function from_candid_SubscriptionPlan_n8(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _SubscriptionPlan): SubscriptionPlan {
-    return from_candid_variant_n9(_uploadFile, _downloadFile, value);
+function from_candid_SubscriptionPlan_n9(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _SubscriptionPlan): SubscriptionPlan {
+    return from_candid_variant_n10(_uploadFile, _downloadFile, value);
 }
 function from_candid_UserRole_n4(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserRole): UserRole {
     return from_candid_variant_n5(_uploadFile, _downloadFile, value);
 }
-function from_candid_opt_n13(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [string]): string | null {
+function from_candid_opt_n11(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [string]): string | null {
     return value.length === 0 ? null : value[0];
 }
 function from_candid_opt_n3(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_UserProfile]): UserProfile | null {
     return value.length === 0 ? null : value[0];
 }
-function from_candid_record_n12(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function from_candid_opt_n8(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_SubscriptionPlan]): SubscriptionPlan | null {
+    return value.length === 0 ? null : from_candid_SubscriptionPlan_n9(_uploadFile, _downloadFile, value[0]);
+}
+function from_candid_record_n14(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     userPrincipal: [] | [string];
     response: string;
 }): {
@@ -490,32 +574,45 @@ function from_candid_record_n12(_uploadFile: (file: ExternalBlob) => Promise<Uin
     response: string;
 } {
     return {
-        userPrincipal: record_opt_to_undefined(from_candid_opt_n13(_uploadFile, _downloadFile, value.userPrincipal)),
+        userPrincipal: record_opt_to_undefined(from_candid_opt_n11(_uploadFile, _downloadFile, value.userPrincipal)),
         response: value.response
     };
 }
 function from_candid_record_n7(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     photosUsed: bigint;
-    plan: _SubscriptionPlan;
+    plan: [] | [_SubscriptionPlan];
     videoLimit: bigint;
     videosUsed: bigint;
     photoLimit: bigint;
 }): {
     photosUsed: bigint;
-    plan: SubscriptionPlan;
+    plan?: SubscriptionPlan;
     videoLimit: bigint;
     videosUsed: bigint;
     photoLimit: bigint;
 } {
     return {
         photosUsed: value.photosUsed,
-        plan: from_candid_SubscriptionPlan_n8(_uploadFile, _downloadFile, value.plan),
+        plan: record_opt_to_undefined(from_candid_opt_n8(_uploadFile, _downloadFile, value.plan)),
         videoLimit: value.videoLimit,
         videosUsed: value.videosUsed,
         photoLimit: value.photoLimit
     };
 }
-function from_candid_variant_n11(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function from_candid_variant_n10(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    Max: null;
+} | {
+    Pro: null;
+} | {
+    Starter: null;
+} | {
+    Basic: null;
+} | {
+    Growth: null;
+}): SubscriptionPlan {
+    return "Max" in value ? SubscriptionPlan.Max : "Pro" in value ? SubscriptionPlan.Pro : "Starter" in value ? SubscriptionPlan.Starter : "Basic" in value ? SubscriptionPlan.Basic : "Growth" in value ? SubscriptionPlan.Growth : value;
+}
+function from_candid_variant_n13(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     completed: {
         userPrincipal: [] | [string];
         response: string;
@@ -538,7 +635,7 @@ function from_candid_variant_n11(_uploadFile: (file: ExternalBlob) => Promise<Ui
 } {
     return "completed" in value ? {
         __kind__: "completed",
-        completed: from_candid_record_n12(_uploadFile, _downloadFile, value.completed)
+        completed: from_candid_record_n14(_uploadFile, _downloadFile, value.completed)
     } : "failed" in value ? {
         __kind__: "failed",
         failed: value.failed
@@ -553,26 +650,13 @@ function from_candid_variant_n5(_uploadFile: (file: ExternalBlob) => Promise<Uin
 }): UserRole {
     return "admin" in value ? UserRole.admin : "user" in value ? UserRole.user : "guest" in value ? UserRole.guest : value;
 }
-function from_candid_variant_n9(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
-    Max: null;
-} | {
-    Pro: null;
-} | {
-    Starter: null;
-} | {
-    Basic: null;
-} | {
-    Growth: null;
-}): SubscriptionPlan {
-    return "Max" in value ? SubscriptionPlan.Max : "Pro" in value ? SubscriptionPlan.Pro : "Starter" in value ? SubscriptionPlan.Starter : "Basic" in value ? SubscriptionPlan.Basic : "Growth" in value ? SubscriptionPlan.Growth : value;
-}
-function to_candid_SubscriptionPlan_n14(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: SubscriptionPlan): _SubscriptionPlan {
-    return to_candid_variant_n15(_uploadFile, _downloadFile, value);
+function to_candid_SubscriptionPlan_n15(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: SubscriptionPlan): _SubscriptionPlan {
+    return to_candid_variant_n16(_uploadFile, _downloadFile, value);
 }
 function to_candid_UserRole_n1(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: UserRole): _UserRole {
     return to_candid_variant_n2(_uploadFile, _downloadFile, value);
 }
-function to_candid_variant_n15(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: SubscriptionPlan): {
+function to_candid_variant_n16(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: SubscriptionPlan): {
     Max: null;
 } | {
     Pro: null;

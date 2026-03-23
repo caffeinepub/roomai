@@ -1,26 +1,23 @@
-# RoomAI
+# StagePro
 
 ## Current State
-RoomAI has a Landing page, Design Tool, and Pricing page. The Design Tool allows single-image generation via Puter API.
+StagePro (renamed from RoomAI) has a design tool with predefined style chips (Modern, Scandinavian, Japandi, etc.). Users can pick from these but cannot create or save their own themes. Several places in the codebase still say "RoomAI" in text, constants, or filenames.
 
 ## Requested Changes (Diff)
 
 ### Add
-- New `PipelinePage` accessible via a "Pipeline" nav link in the Design Tool header
-- Pipeline UI: a table/list where each row has an image URL input, a prompt textarea, and a status indicator
-- Users can add/remove rows
-- A "Run Pipeline" button processes all rows sequentially, calling Puter `flux.1-kontext-pro` for each
-- Each row shows: input image thumbnail, prompt, status (pending/running/done/error), output image
-- Results are displayed inline per row
+- Custom Themes feature: logged-in users can create their own design themes (name + description prompt). Themes are stored persistently in the backend linked to their account.
+- Backend: `addCustomTheme`, `getMyCustomThemes`, `deleteCustomTheme` endpoints.
+- Frontend: "My Themes" section in the sidebar, below built-in style chips; a modal/dialog to create a new theme; custom themes appear as chips alongside built-in ones and can be deleted.
 
 ### Modify
-- App.tsx: add `pipeline` to AppView type and route to PipelinePage
-- DesignTool header: add Pipeline nav link
+- Replace all "RoomAI" references with "StagePro" in frontend files: DesignTool.tsx, LandingPage.tsx, PricingPage.tsx, and any constants/keys.
 
 ### Remove
-- Nothing removed
+- No features removed.
 
 ## Implementation Plan
-1. Create `src/frontend/src/pages/PipelinePage.tsx` with pipeline UI
-2. Update `App.tsx` to add pipeline view routing
-3. Add Pipeline link in DesignTool header nav
+1. Add `CustomTheme` type and stable storage to backend Motoko. Add `addCustomTheme`, `getMyCustomThemes`, `deleteCustomTheme` methods.
+2. Update frontend: replace all "RoomAI" strings with "StagePro".
+3. Add Custom Themes UI in DesignTool sidebar: a "+ Add Theme" button, a create-theme dialog (name + prompt), and chips for user themes with delete option.
+4. Wire frontend to backend via generated bindings.
