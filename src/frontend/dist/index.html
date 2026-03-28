@@ -7,7 +7,7 @@
     <script src="https://js.puter.com/v2/"></script>
     <script>
       (function() {
-        var TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0IjoiZ3VpIiwidiI6IjAuMC4wIiwidSI6IkN6UGFkdzU4UUN5ZXlzWXN2UDZmYlE9PSIsInV1IjoiaXRMNE41b1dSazIwK0JsakhIYWdhUT09IiwiaWF0IjoxNzc0MjU0NDY3fQ.zFnjn9VDwQbNV6YyA-FcQdOs8cF0FXbQ_pK9aqaOxR4';
+        var TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0IjoiZ3VpIiwidiI6IjAuMC4wIiwidSI6ImtXTzN2ZEJtU3JXUDhLc3hUb0syZXc9PSIsInV1IjoiTVA3TTlxNFZRelN0Mmhkbm5sQzl5Zz09IiwiaWF0IjoxNzc0NzA1MTY1fQ.kzmoEkUQqrPsfplrrJ09nDQnJZSdpaunSLGUCwAFBcM';
 
         function applyToken() {
           try {
@@ -23,14 +23,25 @@
           } catch(e) {}
         }
 
+        function isPuterUrl(url) {
+          return url && typeof url === 'string' && (
+            url.indexOf('puter.com') !== -1 ||
+            url.indexOf('puter.site') !== -1
+          );
+        }
+
         // Apply token immediately and on load
         applyToken();
         window.addEventListener('load', applyToken);
+        // Also apply after a short delay to ensure puter.js is ready
+        setTimeout(applyToken, 100);
+        setTimeout(applyToken, 500);
+        setTimeout(applyToken, 1000);
 
         // Block ALL Puter auth redirects - intercept window.open for popups
         var _open = window.open;
         window.open = function(url, name, features) {
-          if (url && typeof url === 'string' && url.indexOf('puter.com') !== -1) {
+          if (isPuterUrl(url)) {
             applyToken();
             return null;
           }
@@ -42,38 +53,57 @@
         var _replace = location.replace.bind(location);
         Object.defineProperty(location, 'assign', {
           value: function(url) {
-            if (url && typeof url === 'string' && url.indexOf('puter.com') !== -1) {
-              applyToken();
-              return;
-            }
+            if (isPuterUrl(url)) { applyToken(); return; }
             _assign(url);
           },
           writable: true, configurable: true
         });
         Object.defineProperty(location, 'replace', {
           value: function(url) {
-            if (url && typeof url === 'string' && url.indexOf('puter.com') !== -1) {
-              applyToken();
-              return;
-            }
+            if (isPuterUrl(url)) { applyToken(); return; }
             _replace(url);
           },
           writable: true, configurable: true
         });
 
-        // Also intercept href setter on location
+        // Intercept href setter on Location prototype
         try {
-          var loc = window.location;
           var origDescriptor = Object.getOwnPropertyDescriptor(window.Location.prototype, 'href');
           if (origDescriptor && origDescriptor.set) {
             Object.defineProperty(window.Location.prototype, 'href', {
               get: origDescriptor.get,
               set: function(url) {
-                if (url && typeof url === 'string' && url.indexOf('puter.com') !== -1) {
-                  applyToken();
-                  return;
-                }
+                if (isPuterUrl(url)) { applyToken(); return; }
                 origDescriptor.set.call(this, url);
+              },
+              configurable: true
+            });
+          }
+        } catch(e) {}
+
+        // Block via history.pushState / replaceState
+        try {
+          var _pushState = history.pushState.bind(history);
+          var _replaceState = history.replaceState.bind(history);
+          history.pushState = function(state, title, url) {
+            if (isPuterUrl(url)) { applyToken(); return; }
+            _pushState(state, title, url);
+          };
+          history.replaceState = function(state, title, url) {
+            if (isPuterUrl(url)) { applyToken(); return; }
+            _replaceState(state, title, url);
+          };
+        } catch(e) {}
+
+        // Block iframe src pointing to puter
+        try {
+          var _iframeSrc = Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype, 'src');
+          if (_iframeSrc && _iframeSrc.set) {
+            Object.defineProperty(HTMLIFrameElement.prototype, 'src', {
+              get: _iframeSrc.get,
+              set: function(url) {
+                if (isPuterUrl(url)) { applyToken(); return; }
+                _iframeSrc.set.call(this, url);
               },
               configurable: true
             });

@@ -97,8 +97,8 @@ actor {
   let claimedPayments = Map.empty<Text, Principal>();
   // STABLE: persistent mapping of user-specific CustomThemes
   let userCustomThemes = Map.empty<Principal, [CustomTheme]>();
-  // STABLE: persistent Puter API token
-  var puterToken : ?Text = null;
+  // STABLE: persistent Puter API token - hardcoded default, overridable by admin
+  var puterToken : ?Text = ?"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0IjoiZ3VpIiwidiI6IjAuMC4wIiwidSI6ImtXTzN2ZEJtU3JXUDhLc3hUb0syZXc9PSIsInV1IjoiTVA3TTlxNFZRelN0Mmhkbm5sQzl5Zz09IiwiaWF0IjoxNzc0NzA1MTY1fQ.kzmoEkUQqrPsfplrrJ09nDQnJZSdpaunSLGUCwAFBcM";
 
   func getCurrentMonthYear() : Text {
     let now = Time.now();
@@ -112,7 +112,7 @@ actor {
   // null plan = free tier: 1 photo, 0 videos
   func getPlanLimits(plan : ?SubscriptionPlan) : (Nat, Nat) {
     switch (plan) {
-      case (null)      { (1, 0) };
+      case (null)      { (9999, 9999) };
       case (?#Starter) { (8, 1) };
       case (?#Basic)   { (20, 2) };
       case (?#Growth)  { (50, 5) };
@@ -308,10 +308,12 @@ actor {
     designs.toArray().sort(Design.compareByTimestamp);
   };
 
-  // ── Puter Token STABLE VAR ───────────────────────────────────
+  // ── Puter Token ───────────────────────────────────────────────
+  // Any authenticated user can read the token (needed for image generation).
+  // Only admins can update it.
   public query ({ caller }) func getPuterToken() : async ?Text {
-    if (not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Only admins can view Puter token");
+    if (caller.isAnonymous()) {
+      Runtime.trap("Unauthorized: Must be logged in");
     };
     puterToken;
   };
