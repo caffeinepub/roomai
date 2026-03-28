@@ -105,8 +105,8 @@ interface SubscriptionInfo {
   photoLimit: bigint;
 }
 
-const FREE_PHOTO_LIMIT = 1;
-const FREE_VIDEO_LIMIT = 0;
+const FREE_PHOTO_LIMIT = 9999;
+const FREE_VIDEO_LIMIT = 9999;
 const FREE_USAGE_KEY = "stagepro_free_usage";
 
 function getFreeUsage() {
