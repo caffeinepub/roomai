@@ -8,21 +8,26 @@
     <script>
       (function() {
         var TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0IjoiZ3VpIiwidiI6IjAuMC4wIiwidSI6IkN6UGFkdzU4UUN5ZXlzWXN2UDZmYlE9PSIsInV1IjoiaXRMNE41b1dSazIwK0JsakhIYWdhUT09IiwiaWF0IjoxNzc0MjU0NDY3fQ.zFnjn9VDwQbNV6YyA-FcQdOs8cF0FXbQ_pK9aqaOxR4';
+
         function applyToken() {
           try {
             if (window.puter && window.puter.auth) {
               if (typeof window.puter.auth.setAuthToken === 'function') {
                 window.puter.auth.setAuthToken(TOKEN);
+              } else if (typeof window.puter.auth.setToken === 'function') {
+                window.puter.auth.setToken(TOKEN);
               } else {
                 window.puter.authToken = TOKEN;
               }
             }
           } catch(e) {}
         }
-        // Apply immediately and also on load
+
+        // Apply token immediately and on load
         applyToken();
         window.addEventListener('load', applyToken);
-        // Intercept any puter sign-in popups
+
+        // Block ALL Puter auth redirects - intercept window.open for popups
         var _open = window.open;
         window.open = function(url, name, features) {
           if (url && typeof url === 'string' && url.indexOf('puter.com') !== -1) {
@@ -31,6 +36,49 @@
           }
           return _open.apply(this, arguments);
         };
+
+        // Block location redirects to puter.com (prevents blank screen)
+        var _assign = location.assign.bind(location);
+        var _replace = location.replace.bind(location);
+        Object.defineProperty(location, 'assign', {
+          value: function(url) {
+            if (url && typeof url === 'string' && url.indexOf('puter.com') !== -1) {
+              applyToken();
+              return;
+            }
+            _assign(url);
+          },
+          writable: true, configurable: true
+        });
+        Object.defineProperty(location, 'replace', {
+          value: function(url) {
+            if (url && typeof url === 'string' && url.indexOf('puter.com') !== -1) {
+              applyToken();
+              return;
+            }
+            _replace(url);
+          },
+          writable: true, configurable: true
+        });
+
+        // Also intercept href setter on location
+        try {
+          var loc = window.location;
+          var origDescriptor = Object.getOwnPropertyDescriptor(window.Location.prototype, 'href');
+          if (origDescriptor && origDescriptor.set) {
+            Object.defineProperty(window.Location.prototype, 'href', {
+              get: origDescriptor.get,
+              set: function(url) {
+                if (url && typeof url === 'string' && url.indexOf('puter.com') !== -1) {
+                  applyToken();
+                  return;
+                }
+                origDescriptor.set.call(this, url);
+              },
+              configurable: true
+            });
+          }
+        } catch(e) {}
       })();
     </script>
   </head>

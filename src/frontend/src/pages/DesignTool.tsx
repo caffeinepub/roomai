@@ -692,6 +692,22 @@ export default function DesignTool({
     }
   }, [isAuthenticated, actor]);
 
+  // Initialize Puter token from backend canister
+  useEffect(() => {
+    if (!actor) return;
+    (actor as any)
+      .getPuterToken()
+      .then((result: [] | [string]) => {
+        const token =
+          Array.isArray(result) && result.length > 0 ? result[0] : null;
+        if (token) {
+          const puter = (window as any).puter;
+          puter?.auth?.setToken?.(token);
+        }
+      })
+      .catch(console.error);
+  }, [actor]);
+
   // Load custom themes when authenticated
   const loadCustomThemes = async () => {
     if (isAuthenticated && actor) {

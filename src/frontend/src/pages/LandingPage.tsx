@@ -91,10 +91,10 @@ export default function LandingPage({
               className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-sm"
               style={{ backgroundColor: "#6F9D79" }}
             >
-              A
+              S
             </div>
             <span className="font-bold text-lg" style={{ color: "#111111" }}>
-              Aura AI
+              StagePro
             </span>
           </div>
 
@@ -159,7 +159,7 @@ export default function LandingPage({
               className="text-sm font-medium tracking-widest uppercase mb-4"
               style={{ color: "#6F9D79" }}
             >
-              Aura AI — Transform Your Space Instantly
+              StagePro — Transform Your Space Instantly
             </p>
             <h1
               className="text-5xl md:text-6xl font-extrabold leading-tight mb-6 max-w-3xl mx-auto"

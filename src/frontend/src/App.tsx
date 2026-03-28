@@ -500,6 +500,12 @@ export default function App() {
       });
   }, [isAuthenticated, actor]);
 
+  // Register user in access control system on first login
+  useEffect(() => {
+    if (!isAuthenticated || !actor) return;
+    (actor as any).selfRegister().catch(console.error);
+  }, [isAuthenticated, actor]);
+
   // Block all access until authenticated
   if (!isAuthenticated) {
     return (

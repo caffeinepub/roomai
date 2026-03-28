@@ -11,9 +11,9 @@ import Stripe "stripe/stripe";
 import OutCall "http-outcalls/outcall";
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
-import Migration "migration";
 
-(with migration = Migration.run)
+
+
 actor {
   let accessControlState = AccessControl.initState();
 
@@ -150,6 +150,17 @@ actor {
     };
   };
 
+
+  // ── Self Registration ────────────────────────────────────────
+  // Any authenticated user can call this to register themselves as a #user.
+  // Safe to call multiple times (idempotent).
+  public shared ({ caller }) func selfRegister() : async () {
+    if (caller.isAnonymous()) { Runtime.trap("Anonymous users cannot register") };
+    switch (accessControlState.userRoles.get(caller)) {
+      case (?_) {}; // already registered, do nothing
+      case (null) { accessControlState.userRoles.add(caller, #user) };
+    };
+  };
   // ── User Profile ─────────────────────────────────────────────
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
