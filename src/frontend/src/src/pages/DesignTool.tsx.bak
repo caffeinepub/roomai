@@ -4,13 +4,10 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -105,9 +102,9 @@ interface SubscriptionInfo {
   photoLimit: bigint;
 }
 
-const _FREE_PHOTO_LIMIT = 9999;
-const _FREE_VIDEO_LIMIT = 9999;
-const FREE_USAGE_KEY = "stagepro_free_usage";
+const FREE_PHOTO_LIMIT = 1;
+const FREE_VIDEO_LIMIT = 0;
+const FREE_USAGE_KEY = "roomai_free_usage";
 
 function getFreeUsage() {
   try {
@@ -387,27 +384,11 @@ function SidebarContent({
   onSelect,
   selectedStyle,
   onStyleSelect,
-  customThemes,
-  selectedCustomThemeId,
-  onCustomThemeSelect,
-  onAddThemeClick,
-  onDeleteCustomTheme,
-  isAuthenticated,
 }: {
   selectedTool: ToolId;
   onSelect: (id: ToolId) => void;
   selectedStyle: string | null;
   onStyleSelect: (style: string | null) => void;
-  customThemes: Array<{ id: string; name: string; prompt: string }>;
-  selectedCustomThemeId: string | null;
-  onCustomThemeSelect: (
-    id: string | null,
-    name: string,
-    prompt: string,
-  ) => void;
-  onAddThemeClick: () => void;
-  onDeleteCustomTheme: (id: string) => void;
-  isAuthenticated: boolean;
 }) {
   return (
     <ScrollArea className="h-full">
@@ -459,87 +440,6 @@ function SidebarContent({
             ))}
           </div>
         </div>
-
-        {/* My Themes */}
-        {isAuthenticated && (
-          <div className="mb-2">
-            <div className="px-3 py-2 flex items-center justify-between">
-              <p
-                className="text-xs font-semibold uppercase tracking-wider"
-                style={{ color: "#9CA3AF" }}
-              >
-                My Themes
-              </p>
-              <button
-                type="button"
-                onClick={onAddThemeClick}
-                className="text-xs font-medium px-2 py-0.5 rounded-full transition-colors hover:opacity-80"
-                style={{ backgroundColor: "#E6F7F6", color: "#2D9B94" }}
-                data-ocid="design.themes.open_modal_button"
-              >
-                + Add
-              </button>
-            </div>
-            <div className="px-3 flex flex-wrap gap-1.5 pb-2">
-              {customThemes.length === 0 ? (
-                <p className="text-xs" style={{ color: "#9CA3AF" }}>
-                  No custom themes yet.
-                </p>
-              ) : (
-                customThemes.map((theme) => (
-                  <div
-                    key={theme.id}
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-all"
-                    style={{
-                      backgroundColor:
-                        selectedCustomThemeId === theme.id
-                          ? "#4ECDC4"
-                          : "#F3F4F6",
-                      color:
-                        selectedCustomThemeId === theme.id
-                          ? "#FFFFFF"
-                          : "#374151",
-                      border:
-                        selectedCustomThemeId === theme.id
-                          ? "1px solid #4ECDC4"
-                          : "1px solid #E2E8F0",
-                    }}
-                  >
-                    <button
-                      type="button"
-                      onClick={() =>
-                        selectedCustomThemeId === theme.id
-                          ? onCustomThemeSelect(null, "", "")
-                          : onCustomThemeSelect(
-                              theme.id,
-                              theme.name,
-                              theme.prompt,
-                            )
-                      }
-                      data-ocid="design.custom-theme.toggle"
-                    >
-                      {theme.name}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onDeleteCustomTheme(theme.id)}
-                      className="ml-0.5 hover:opacity-70 flex-shrink-0"
-                      style={{
-                        color:
-                          selectedCustomThemeId === theme.id
-                            ? "#FFFFFF"
-                            : "#9CA3AF",
-                      }}
-                      data-ocid="design.custom-theme.delete_button"
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        )}
 
         {/* Tools */}
         {TOOL_GROUPS.map((group) => (
@@ -641,24 +541,6 @@ export default function DesignTool({
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [freeUsage, setFreeUsageState] = useState(getFreeUsage);
 
-  // Custom themes
-  const [customThemes, setCustomThemes] = useState<
-    Array<{ id: string; name: string; prompt: string; createdAt: bigint }>
-  >([]);
-  const [selectedCustomThemeId, setSelectedCustomThemeId] = useState<
-    string | null
-  >(null);
-  const [customThemePrompt, setCustomThemePrompt] = useState<string>("");
-  const [isAddThemeOpen, setIsAddThemeOpen] = useState(false);
-  const [newThemeName, setNewThemeName] = useState("");
-  const [newThemePromptText, setNewThemePromptText] = useState("");
-  const [isSavingTheme, setIsSavingTheme] = useState(false);
-
-  // Multi-image upload
-  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
-  const [uploadedImageUrls, setUploadedImageUrls] = useState<string[]>([]);
-  const addImageInputRef = useRef<HTMLInputElement>(null);
-
   const fileInputRef = useRef<HTMLInputElement>(null);
   const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
     null,
@@ -692,110 +574,33 @@ export default function DesignTool({
     }
   }, [isAuthenticated, actor]);
 
-  // Initialize Puter token from backend canister
-  useEffect(() => {
-    if (!actor) return;
-    (actor as any)
-      .getPuterToken()
-      .then((result: [] | [string]) => {
-        const token =
-          Array.isArray(result) && result.length > 0 ? result[0] : null;
-        if (token) {
-          const puter = (window as any).puter;
-          puter?.auth?.setToken?.(token);
-        }
-      })
-      .catch(console.error);
-  }, [actor]);
-
-  // Load custom themes when authenticated
-  const loadCustomThemes = async () => {
-    if (isAuthenticated && actor) {
-      try {
-        const themes = await (actor as any).getMyCustomThemes();
-        setCustomThemes(themes);
-      } catch (e) {
-        console.error("Failed to load custom themes", e);
-      }
-    }
-  };
-
-  useEffect(() => {
-    if (isAuthenticated && actor) {
-      (actor as any)
-        .getMyCustomThemes()
-        .then(
-          (
-            themes: Array<{
-              id: string;
-              name: string;
-              prompt: string;
-              createdAt: bigint;
-            }>,
-          ) => setCustomThemes(themes),
-        )
-        .catch(console.error);
-    }
-  }, [isAuthenticated, actor]);
-
-  const handleAddCustomTheme = async () => {
-    if (!newThemeName.trim() || !newThemePromptText.trim()) {
-      toast.error("Theme name and prompt are required");
-      return;
-    }
-    setIsSavingTheme(true);
-    try {
-      await (actor as any).addCustomTheme(
-        newThemeName.trim(),
-        newThemePromptText.trim(),
-      );
-      await loadCustomThemes();
-      setNewThemeName("");
-      setNewThemePromptText("");
-      setIsAddThemeOpen(false);
-      toast.success("Theme saved!");
-    } catch (e) {
-      console.error(e);
-      toast.error("Failed to save theme");
-    } finally {
-      setIsSavingTheme(false);
-    }
-  };
-
-  const handleDeleteCustomTheme = async (themeId: string) => {
-    try {
-      await (actor as any).deleteCustomTheme(themeId);
-      if (selectedCustomThemeId === themeId) {
-        setSelectedCustomThemeId(null);
-        setCustomThemePrompt("");
-      }
-      await loadCustomThemes();
-      toast.success("Theme deleted");
-    } catch (e) {
-      console.error(e);
-      toast.error("Failed to delete theme");
-    }
-  };
-
-  const handleCustomThemeSelect = (
-    id: string | null,
-    _name: string,
-    prompt: string,
-  ) => {
-    setSelectedCustomThemeId(id);
-    setCustomThemePrompt(prompt);
-    // Clear built-in style when custom theme selected
-    if (id) setSelectedStyle(null);
-  };
-
   // Compute effective limits
   // While subscription is loading, use generous limits so the create button isn't blocked.
   // Once loaded, use the actual plan limits. If no subscription found, fall back to free limits.
-  // UNLIMITED MODE
-  const photoLimit = 9999;
-  const videoLimit = 9999;
-  const photosUsed = 0;
-  const videosUsed = 0;
+  const photoLimit =
+    isAuthenticated && subscriptionInfo
+      ? Number(subscriptionInfo.photoLimit)
+      : isAuthenticated && subscriptionLoading
+        ? 9999
+        : FREE_PHOTO_LIMIT;
+  const videoLimit =
+    isAuthenticated && subscriptionInfo
+      ? Number(subscriptionInfo.videoLimit)
+      : isAuthenticated && subscriptionLoading
+        ? 9999
+        : FREE_VIDEO_LIMIT;
+  const photosUsed =
+    isAuthenticated && subscriptionInfo
+      ? Number(subscriptionInfo.photosUsed)
+      : isAuthenticated && subscriptionLoading
+        ? 0
+        : freeUsage.photos;
+  const videosUsed =
+    isAuthenticated && subscriptionInfo
+      ? Number(subscriptionInfo.videosUsed)
+      : isAuthenticated && subscriptionLoading
+        ? 0
+        : freeUsage.videos;
 
   const photosRemaining = Math.max(0, photoLimit - photosUsed);
   const videosRemaining = Math.max(0, videoLimit - videosUsed);
@@ -815,58 +620,11 @@ export default function DesignTool({
     const reader = new FileReader();
     reader.onload = (e) => setUploadedImageUrl(e.target?.result as string);
     reader.readAsDataURL(file);
-
-    // Also add to multi-image list (max 4)
-    setUploadedFiles((prev) => {
-      if (prev.length >= 4) return prev;
-      return [...prev, file];
-    });
-    const r2 = new FileReader();
-    r2.onload = (e) => {
-      const url = e.target?.result as string;
-      setUploadedImageUrls((prev) => {
-        if (prev.length >= 4) return prev;
-        return [...prev, url];
-      });
-    };
-    r2.readAsDataURL(file);
   }, []);
 
-  const handleAddImage = useCallback(
-    (file: File) => {
-      if (!file.type.startsWith("image/")) {
-        toast.error("Please upload an image file");
-        return;
-      }
-      if (uploadedFiles.length >= 4) {
-        toast.error("Maximum 4 images allowed");
-        return;
-      }
-      setUploadedFiles((prev) => [...prev, file]);
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const url = e.target?.result as string;
-        setUploadedImageUrls((prev) => [...prev, url]);
-        // If this is the first image, set it as primary
-        if (!uploadedImageUrl) {
-          setUploadedImageUrl(url);
-          setUploadedFile(file);
-        }
-      };
-      reader.readAsDataURL(file);
-    },
-    [uploadedFiles, uploadedImageUrl],
-  );
-
-  const removeImage = (index: number) => {
-    const newFiles = uploadedFiles.filter((_, i) => i !== index);
-    const newUrls = uploadedImageUrls.filter((_, i) => i !== index);
-    setUploadedFiles(newFiles);
-    setUploadedImageUrls(newUrls);
-    if (index === 0) {
-      setUploadedFile(newFiles[0] || null);
-      setUploadedImageUrl(newUrls[0] || "");
-    }
+  const clearUpload = () => {
+    setUploadedFile(null);
+    setUploadedImageUrl("");
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -1076,51 +834,30 @@ export default function DesignTool({
         const preservationConstraint = activeTool.modifiesFurniture
           ? ""
           : "IMPORTANT: Do NOT add, remove, or change any furniture or decor items. Preserve all existing furniture exactly as-is. ";
-        const styleLabel =
-          selectedCustomThemeId && customThemePrompt
-            ? `custom theme (${customThemePrompt})`
-            : selectedStyle || "";
-        const basePrompt = activeTool.prompt(selectedRoom, styleLabel);
+        const basePrompt = activeTool.prompt(selectedRoom, selectedStyle || "");
         const prompt = `${strictConstraints}${preservationConstraint}${basePrompt}`;
-
-        // Process all uploaded images (multi-image support)
-        const imagesToProcess =
-          uploadedImageUrls.length > 0 ? uploadedImageUrls : [uploadedImageUrl];
-        const newGens: Generation[] = [];
-
-        for (let i = 0; i < imagesToProcess.length; i++) {
-          const imgUrl = imagesToProcess[i];
-          const imageElement = await puter.ai.txt2img(prompt, {
-            model: "black-forest-labs/flux.1-kontext-pro",
-            image_url: imgUrl,
-          });
-          const newGen: Generation = {
-            id: crypto.randomUUID(),
-            originalImageUrl: imgUrl,
-            generatedImageUrl: imageElement.src,
-            tool: activeTool.label,
-            roomType: selectedRoom,
-            style: selectedCustomThemeId
-              ? `Custom: ${customThemePrompt.substring(0, 30)}...`
-              : selectedStyle || "",
-            instructions,
-            version: 1,
-            timestamp: new Date(Date.now() + i),
-          };
-          newGens.push(newGen);
-          await recordPhotoUsageLocal();
-        }
-
+        const imageElement = await puter.ai.txt2img(prompt, {
+          model: "black-forest-labs/flux.1-kontext-pro",
+          image_url: uploadedImageUrl,
+        });
         stopProgress();
         setProgress(100);
         setStatusMsg("Done!");
-        setGenerations((prev) => [...prev, ...newGens]);
+        const newGen: Generation = {
+          id: crypto.randomUUID(),
+          originalImageUrl: uploadedImageUrl,
+          generatedImageUrl: imageElement.src,
+          tool: activeTool.label,
+          roomType: selectedRoom,
+          style: selectedStyle || "",
+          instructions,
+          version: 1,
+          timestamp: new Date(),
+        };
+        setGenerations((prev) => [...prev, newGen]);
         setInputText("");
-        toast.success(
-          imagesToProcess.length > 1
-            ? `${imagesToProcess.length} images transformed!`
-            : "Transformation complete!",
-        );
+        await recordPhotoUsageLocal();
+        toast.success("Transformation complete!");
       } catch (err) {
         stopProgress();
         console.error(err);
@@ -1134,14 +871,14 @@ export default function DesignTool({
   const handleDownload = (gen: Generation) => {
     const a = document.createElement("a");
     a.href = gen.generatedImageUrl;
-    a.download = `stagepro-${gen.tool.toLowerCase().replace(/ /g, "-")}-v${gen.version}.jpg`;
+    a.download = `roomai-${gen.tool.toLowerCase().replace(/ /g, "-")}-v${gen.version}.jpg`;
     a.click();
   };
 
   const handleVideoDownload = (gen: VideoGeneration) => {
     const a = document.createElement("a");
     a.href = gen.videoUrl;
-    a.download = `stagepro-video-${gen.duration}s.mp4`;
+    a.download = `roomai-video-${gen.duration}s.mp4`;
     a.click();
   };
 
@@ -1230,10 +967,10 @@ export default function DesignTool({
                 background: "linear-gradient(135deg, #4ECDC4, #2D9B94)",
               }}
             >
-              S
+              R
             </div>
             <span className="font-bold text-sm" style={{ color: "#111827" }}>
-              StagePro
+              RoomAI
             </span>
           </div>
         </div>
@@ -1551,19 +1288,7 @@ export default function DesignTool({
             selectedTool={selectedTool}
             onSelect={setSelectedTool}
             selectedStyle={selectedStyle}
-            onStyleSelect={(s) => {
-              setSelectedStyle(s);
-              if (s) {
-                setSelectedCustomThemeId(null);
-                setCustomThemePrompt("");
-              }
-            }}
-            customThemes={customThemes}
-            selectedCustomThemeId={selectedCustomThemeId}
-            onCustomThemeSelect={handleCustomThemeSelect}
-            onAddThemeClick={() => setIsAddThemeOpen(true)}
-            onDeleteCustomTheme={handleDeleteCustomTheme}
-            isAuthenticated={isAuthenticated}
+            onStyleSelect={setSelectedStyle}
           />
         </aside>
 
@@ -1593,22 +1318,7 @@ export default function DesignTool({
                 setSidebarOpen(false);
               }}
               selectedStyle={selectedStyle}
-              onStyleSelect={(s) => {
-                setSelectedStyle(s);
-                if (s) {
-                  setSelectedCustomThemeId(null);
-                  setCustomThemePrompt("");
-                }
-              }}
-              customThemes={customThemes}
-              selectedCustomThemeId={selectedCustomThemeId}
-              onCustomThemeSelect={handleCustomThemeSelect}
-              onAddThemeClick={() => {
-                setIsAddThemeOpen(true);
-                setSidebarOpen(false);
-              }}
-              onDeleteCustomTheme={handleDeleteCustomTheme}
-              isAuthenticated={isAuthenticated}
+              onStyleSelect={setSelectedStyle}
             />
           </SheetContent>
         </Sheet>
@@ -1983,72 +1693,33 @@ export default function DesignTool({
             </AnimatePresence>
 
             <AnimatePresence>
-              {uploadedImageUrls.length > 0 && (
+              {uploadedImageUrl && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: "auto" }}
                   exit={{ opacity: 0, height: 0 }}
-                  className="flex items-center gap-2 px-4 pt-3 flex-wrap"
+                  className="flex items-center gap-3 px-4 pt-3"
                 >
-                  {uploadedImageUrls.map((url, idx) => (
-                    <div
-                      key={url.substring(url.length - 20) + String(idx)}
-                      className="relative flex-shrink-0"
-                    >
-                      <img
-                        src={url}
-                        alt={`Room ${idx + 1}`}
-                        className="w-12 h-12 object-cover rounded-lg"
-                        style={{ border: "1px solid #E2E8F0" }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeImage(idx)}
-                        className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full flex items-center justify-center"
-                        style={{ backgroundColor: "#9CA3AF", color: "white" }}
-                        data-ocid={`design.upload.delete_button.${idx + 1}`}
-                      >
-                        <X className="h-2.5 w-2.5" />
-                      </button>
-                    </div>
-                  ))}
-                  {uploadedImageUrls.length < 4 && (
+                  <div className="relative">
+                    <img
+                      src={uploadedImageUrl}
+                      alt="Uploaded"
+                      className="w-12 h-12 object-cover rounded-lg"
+                      style={{ border: "1px solid #E2E8F0" }}
+                    />
                     <button
                       type="button"
-                      onClick={() => addImageInputRef.current?.click()}
-                      className="w-12 h-12 rounded-lg flex flex-col items-center justify-center gap-0.5 flex-shrink-0 transition-colors hover:bg-gray-100"
-                      style={{ border: "1px dashed #D1D5DB", color: "#9CA3AF" }}
-                      data-ocid="design.add-image.button"
+                      onClick={clearUpload}
+                      className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full flex items-center justify-center"
+                      style={{ backgroundColor: "#9CA3AF", color: "white" }}
+                      data-ocid="design.upload.delete_button"
                     >
-                      <ImagePlus className="h-3.5 w-3.5" />
-                      <span className="text-[9px]">Add</span>
+                      <X className="h-2.5 w-2.5" />
                     </button>
-                  )}
-                  <input
-                    ref={addImageInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="sr-only"
-                    onChange={(e) =>
-                      e.target.files?.[0] && handleAddImage(e.target.files[0])
-                    }
-                  />
-                  {uploadedImageUrls.length === 1 && (
-                    <p
-                      className="text-xs self-center"
-                      style={{ color: "#6B7280" }}
-                    >
-                      {uploadedFile?.name}
-                    </p>
-                  )}
-                  {uploadedImageUrls.length > 1 && (
-                    <p
-                      className="text-xs self-center"
-                      style={{ color: "#6B7280" }}
-                    >
-                      {uploadedImageUrls.length} images
-                    </p>
-                  )}
+                  </div>
+                  <p className="text-xs" style={{ color: "#6B7280" }}>
+                    {uploadedFile?.name}
+                  </p>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -2265,89 +1936,6 @@ export default function DesignTool({
           </div>
         </div>
       </div>
-
-      {/* Add Custom Theme Dialog */}
-      <Dialog open={isAddThemeOpen} onOpenChange={setIsAddThemeOpen}>
-        <DialogContent
-          className="max-w-sm"
-          style={{ backgroundColor: "#FFFFFF" }}
-        >
-          <DialogHeader>
-            <DialogTitle style={{ color: "#111827" }}>
-              Add Custom Theme
-            </DialogTitle>
-            <DialogDescription style={{ color: "#6B7280" }}>
-              Create a personalized design style that will be saved to your
-              account.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-1.5">
-              <Label
-                htmlFor="theme-name"
-                className="text-sm font-medium"
-                style={{ color: "#374151" }}
-              >
-                Theme Name
-              </Label>
-              <Input
-                id="theme-name"
-                placeholder="e.g. Earthy Boho"
-                value={newThemeName}
-                onChange={(e) => setNewThemeName(e.target.value)}
-                style={{ border: "1px solid #E2E8F0" }}
-                data-ocid="design.add-theme.input"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label
-                htmlFor="theme-prompt"
-                className="text-sm font-medium"
-                style={{ color: "#374151" }}
-              >
-                Style Prompt
-              </Label>
-              <Textarea
-                id="theme-prompt"
-                placeholder="e.g. Bohemian with warm earth tones, rattan furniture, and lush indoor plants"
-                value={newThemePromptText}
-                onChange={(e) => setNewThemePromptText(e.target.value)}
-                rows={3}
-                style={{ border: "1px solid #E2E8F0", resize: "none" }}
-                data-ocid="design.add-theme.textarea"
-              />
-            </div>
-          </div>
-          <DialogFooter className="gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setIsAddThemeOpen(false)}
-              data-ocid="design.add-theme.cancel_button"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleAddCustomTheme}
-              disabled={
-                isSavingTheme ||
-                !newThemeName.trim() ||
-                !newThemePromptText.trim()
-              }
-              style={{
-                background: "linear-gradient(135deg, #4ECDC4, #2D9B94)",
-                color: "white",
-                border: "none",
-              }}
-              data-ocid="design.add-theme.save_button"
-            >
-              {isSavingTheme ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : null}
-              {isSavingTheme ? "Saving..." : "Save Theme"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Upgrade Modal */}
       <Dialog open={showUpgradeModal} onOpenChange={setShowUpgradeModal}>

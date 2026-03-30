@@ -98,7 +98,7 @@ actor {
   // STABLE: persistent mapping of user-specific CustomThemes
   let userCustomThemes = Map.empty<Principal, [CustomTheme]>();
   // STABLE: persistent Puter API token - hardcoded default, overridable by admin
-  var puterToken : ?Text = ?"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0IjoiZ3VpIiwidiI6IjAuMC4wIiwidSI6ImtXTzN2ZEJtU3JXUDhLc3hUb0syZXc9PSIsInV1IjoiTVA3TTlxNFZRelN0Mmhkbm5sQzl5Zz09IiwiaWF0IjoxNzc0NzA1MTY1fQ.kzmoEkUQqrPsfplrrJ09nDQnJZSdpaunSLGUCwAFBcM";
+  var puterToken : ?Text = ?"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0IjoiZ3VpIiwidiI6IjAuMC4wIiwidSI6Ii85QzZVejRoU0FDREtDYjZxS2ZPWEE9PSIsInV1IjoiYUx1dW9ZOGpST1dybnN6OUZlVFV5UT09IiwiaWF0IjoxNzc0ODY5NDE0fQ.YNFIUAlSo67eurrYl7VrrVgDRW_tw14OuIfoAvEIpx8";
 
   func getCurrentMonthYear() : Text {
     let now = Time.now();

@@ -105,8 +105,8 @@ interface SubscriptionInfo {
   photoLimit: bigint;
 }
 
-const _FREE_PHOTO_LIMIT = 9999;
-const _FREE_VIDEO_LIMIT = 9999;
+const FREE_PHOTO_LIMIT = 9999;
+const FREE_VIDEO_LIMIT = 9999;
 const FREE_USAGE_KEY = "stagepro_free_usage";
 
 function getFreeUsage() {
@@ -791,11 +791,30 @@ export default function DesignTool({
   // Compute effective limits
   // While subscription is loading, use generous limits so the create button isn't blocked.
   // Once loaded, use the actual plan limits. If no subscription found, fall back to free limits.
-  // UNLIMITED MODE
-  const photoLimit = 9999;
-  const videoLimit = 9999;
-  const photosUsed = 0;
-  const videosUsed = 0;
+  const photoLimit =
+    isAuthenticated && subscriptionInfo
+      ? Number(subscriptionInfo.photoLimit)
+      : isAuthenticated && subscriptionLoading
+        ? 9999
+        : FREE_PHOTO_LIMIT;
+  const videoLimit =
+    isAuthenticated && subscriptionInfo
+      ? Number(subscriptionInfo.videoLimit)
+      : isAuthenticated && subscriptionLoading
+        ? 9999
+        : FREE_VIDEO_LIMIT;
+  const photosUsed =
+    isAuthenticated && subscriptionInfo
+      ? Number(subscriptionInfo.photosUsed)
+      : isAuthenticated && subscriptionLoading
+        ? 0
+        : freeUsage.photos;
+  const videosUsed =
+    isAuthenticated && subscriptionInfo
+      ? Number(subscriptionInfo.videosUsed)
+      : isAuthenticated && subscriptionLoading
+        ? 0
+        : freeUsage.videos;
 
   const photosRemaining = Math.max(0, photoLimit - photosUsed);
   const videosRemaining = Math.max(0, videoLimit - videosUsed);
